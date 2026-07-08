@@ -4,7 +4,7 @@ export const BATTLE_CONFIG = {
   initialWaveDelaySec: 4,
   
   aggroRangeX: 160, // Dynamic lanes: max horizontal distance to target
-  aggroRangeY: 200, // Max vertical distance to notice a target
+  aggroRangeY: 400, // Max vertical distance to notice a target
   
   meleeRange: 35,
   rangedRange: 160,
@@ -30,16 +30,16 @@ export const BATTLE_CONFIG = {
   separationRadius: 25,
   separationForce: 60,
   
-  warriorWrongColorDamageMultiplier: 0.2, // Warriors deal 20% damage if color mismatch
-  enemyWrongColorDamageMultiplier: 1.4, // Enemies deal a modest damage bonus to mismatched warrior colors
+  warriorWrongColorDamageMultiplier: 0.7, // Warriors deal 20% damage if color mismatch
+  enemyWrongColorDamageMultiplier: 1.3, // Enemies deal a modest damage bonus to mismatched warrior colors
 };
 
 export const WAVES = [
   { totalEnemies: 4, spawnRateMs: 4500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
   { totalEnemies: 7, spawnRateMs: 4200, hpMultiplier: 0.75, damageMultiplier: 0.75 },
-  { totalEnemies: 11, spawnRateMs: 3200, hpMultiplier: 0.9, damageMultiplier: 0.9 },
-  { totalEnemies: 20, spawnRateMs: 2000, hpMultiplier: 1.2, damageMultiplier: 1.2 },
-  { totalEnemies: 30, spawnRateMs: 1500, hpMultiplier: 1.5, damageMultiplier: 1.5 },
+  { totalEnemies: 9, spawnRateMs: 4100, hpMultiplier: 0.8, damageMultiplier: 0.8 },
+  { totalEnemies: 11, spawnRateMs: 3800, hpMultiplier: 1.0, damageMultiplier: 1.0 },
+  { totalEnemies: 15, spawnRateMs: 3700, hpMultiplier: 1.2, damageMultiplier: 1.0 },
 ];
 
 export const WARRIOR_COLORS = [
