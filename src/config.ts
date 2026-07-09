@@ -1,67 +1,122 @@
-export const BATTLE_CONFIG = {
-  wallMaxHealth: 1000,
-  enemySpawnRateMs: 2500,
-  initialWaveDelaySec: 4,
-  
-  aggroRangeX: 160, // Dynamic lanes: max horizontal distance to target
-  aggroRangeY: 400, // Max vertical distance to notice a target
-  
-  meleeRange: 35,
-  rangedRange: 160,
-  
-  meleeDamage: 15,
-  rangedDamage: 10,
-  enemyDamage: 10,
-  wallDamage: 20, // Damage enemies deal to wall per hit
-  
-  warriorHp: 36,
-  enemyHp: 42,
-  
-  moveSpeed: 45, // pixels per second
-  projectileSpeed: 200, // pixels per second
-  
-  attackCooldownMs: 1150,
-  
-  shapeGeneratorCooldown: 3000,
-  shapeGrowthN: 2500,
-  shapeGrowthM: 2200,
-  shapeGrowthK: 2000,
+export const GAME_CONFIG = {
+  board: {
+    cols: 6,
+    rows: 4,
+    maxWidthPx: 320,
+    dragPreviewExpandFactor: 0.5,
+    cellCooldownMs: 20000,
+    activationFlashMs: 250,
+  },
+  generator: {
+    dragOffsetPx: -80,
+    idleScale: 0.6,
+    stageCount: 4,
+    tetrominoRotationCount: 4,
+    coinChance: 0.2,
+    previewGrabInsetPx: 10,
+    slotWidthPx: 40,
+    slotHeightPx: 20,
+    spacerSizePx: 12,
+    stageDurationsMs: [3000, 2500, 2200, 2000],
+  },
+  battle: {
+    wallMaxHealth: 1000,
+    enemySpawnRateMs: 2500,
+    initialWaveDelaySec: 4,
+    interWaveDelaySec: 3,
 
-  separationRadius: 25,
-  separationForce: 60,
-  
-  warriorWrongColorDamageMultiplier: 0.7, // Warriors deal 20% damage if color mismatch
-  enemyWrongColorDamageMultiplier: 1.3, // Enemies deal a modest damage bonus to mismatched warrior colors
-};
+    aggroRangeX: 160,
+    aggroRangeY: 400,
 
-export const WAVES = [
-  { totalEnemies: 4, spawnRateMs: 4500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
-  { totalEnemies: 7, spawnRateMs: 4200, hpMultiplier: 0.75, damageMultiplier: 0.75 },
-  { totalEnemies: 9, spawnRateMs: 4100, hpMultiplier: 0.8, damageMultiplier: 0.8 },
-  { totalEnemies: 11, spawnRateMs: 3800, hpMultiplier: 1.0, damageMultiplier: 1.0 },
-  { totalEnemies: 15, spawnRateMs: 3700, hpMultiplier: 1.2, damageMultiplier: 1.0 },
-];
+    meleeRange: 35,
+    rangedRange: 160,
 
-export const WARRIOR_COLORS = [
-  'bg-red-500',
-  'bg-blue-500',
-  'bg-green-500',
-  'bg-amber-500',
-  'bg-purple-500'
-];
+    meleeDamage: 15,
+    rangedDamage: 10,
+    enemyDamage: 10,
+    wallDamage: 20,
 
-export const WARRIOR_TEXT_COLORS = [
-  'text-red-500',
-  'text-blue-500',
-  'text-green-500',
-  'text-amber-500',
-  'text-purple-500'
-];
+    warriorHp: 36,
+    enemyHp: 42,
 
-export const WARRIOR_HEX_COLORS = [
-  '#ef4444', // red-500
-  '#3b82f6', // blue-500
-  '#22c55e', // green-500
-  '#f59e0b', // amber-500
-  '#a855f7'  // purple-500
-];
+    moveSpeed: 45,
+    projectileSpeed: 200,
+
+    attackCooldownMs: 1150,
+
+    separationRadius: 25,
+    separationForce: 60,
+
+    warriorWrongColorDamageMultiplier: 0.7,
+    enemyWrongColorDamageMultiplier: 1.3,
+
+    playerSpawnYOffsetPx: 10,
+    enemySpawnYOffsetPx: 10,
+    spawnJitterPx: 10,
+    spawnJitterHalfRangePx: 5,
+
+    enemySpawnBands: [
+      { minRatio: 0.35, maxRatio: 0.65 },
+      { minRatio: 0.2, maxRatio: 0.8 },
+    ],
+    enemySpawnPaddingPx: 20,
+
+    idleMoveSpeedMultiplier: 0.4,
+    idleRetargetMinSec: 1,
+    idleRetargetRangeSec: 2,
+    idleWanderXRangePx: 120,
+    idleWanderYRangePx: 100,
+    idleLowerBoundFromBottomPx: 150,
+    idleLowerBoundBonusDyPx: 40,
+    idleUpperBoundFromBottomPx: 40,
+    idleUpperBoundBonusDyPx: 20,
+    idleTargetPaddingPx: 20,
+    idleStopDistancePx: 5,
+
+    projectileHitRadiusPx: 15,
+    damageTextYOffsetPx: 10,
+    damageTextRiseSpeedPxPerSec: 20,
+    damageTextLifeSec: 1,
+    entityCleanupAboveTopPx: 100,
+
+    unitClassChance: 0.5,
+  },
+  waves: [
+    { totalEnemies: 4, spawnRateMs: 4500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
+    { totalEnemies: 7, spawnRateMs: 4200, hpMultiplier: 0.75, damageMultiplier: 0.75 },
+    { totalEnemies: 9, spawnRateMs: 4100, hpMultiplier: 0.8, damageMultiplier: 0.8 },
+    { totalEnemies: 11, spawnRateMs: 3800, hpMultiplier: 1.0, damageMultiplier: 1.0 },
+    { totalEnemies: 15, spawnRateMs: 3700, hpMultiplier: 1.2, damageMultiplier: 1.0 },
+  ],
+  colors: {
+    warriorBg: [
+      'bg-red-500',
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-amber-500',
+      'bg-purple-500'
+    ],
+    warriorText: [
+      'text-red-500',
+      'text-blue-500',
+      'text-green-500',
+      'text-amber-500',
+      'text-purple-500'
+    ],
+    warriorHex: [
+      '#ef4444',
+      '#3b82f6',
+      '#22c55e',
+      '#f59e0b',
+      '#a855f7'
+    ],
+  },
+} as const;
+
+export const BOARD_CONFIG = GAME_CONFIG.board;
+export const GENERATOR_CONFIG = GAME_CONFIG.generator;
+export const BATTLE_CONFIG = GAME_CONFIG.battle;
+export const WAVES = GAME_CONFIG.waves;
+export const WARRIOR_COLORS = GAME_CONFIG.colors.warriorBg;
+export const WARRIOR_TEXT_COLORS = GAME_CONFIG.colors.warriorText;
+export const WARRIOR_HEX_COLORS = GAME_CONFIG.colors.warriorHex;
