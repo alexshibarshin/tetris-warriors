@@ -21,29 +21,31 @@ export const GAME_CONFIG = {
     stageDurationsMs: [3000, 2500, 2200, 2000],
   },
   battle: {
-    wallMaxHealth: 1000,
-    enemySpawnRateMs: 2500,
+    playerBaseMaxHealth: 1000,
+    enemyStructureMaxHealth: 1000,
     initialWaveDelaySec: 4,
-    interWaveDelaySec: 3,
 
     aggroRangeX: 160,
     aggroRangeY: 400,
 
     meleeRange: 35,
     rangedRange: 160,
+    structureAttackRange: 180,
 
     meleeDamage: 15,
     rangedDamage: 10,
-    enemyDamage: 10,
-    wallDamage: 20,
+    enemyDamage: 6,
+    playerBaseDamage: 8,
+    structureDamage: 15,
 
     warriorHp: 36,
-    enemyHp: 42,
+    enemyHp: 32,
 
     moveSpeed: 45,
     projectileSpeed: 200,
 
     attackCooldownMs: 1150,
+    structureAttackCooldownMs: 1500,
     attackVisualDurationMs: 220,
     attackVisualLungePx: 10,
     attackVisualLiftPx: 4,
@@ -53,19 +55,22 @@ export const GAME_CONFIG = {
     separationRadius: 25,
     separationForce: 60,
 
-    warriorWrongColorDamageMultiplier: 0.7,
-    enemyWrongColorDamageMultiplier: 1.3,
+    warriorWrongColorDamageMultiplier: 0.75,
+    enemyWrongColorDamageMultiplier: 1.2,
 
     playerSpawnYOffsetPx: 10,
-    enemySpawnYOffsetPx: 10,
+    enemySpawnYOffsetPx: 128,
     spawnJitterPx: 10,
     spawnJitterHalfRangePx: 5,
-
-    enemySpawnBands: [
-      { minRatio: 0.35, maxRatio: 0.65 },
-      { minRatio: 0.2, maxRatio: 0.8 },
-    ],
     enemySpawnPaddingPx: 20,
+    enemyStructureXRatio: 0.5,
+    enemyStructureYPx: 82,
+    enemySpawnSpreadPx: 72,
+    emergencySpawnRangePx: 170,
+    enemyPressureRadiusPx: 210,
+    playerPressureRadiusPx: 240,
+    playerSpawnRealizationRate: 0.72,
+    spawnCooldownVariance: 0.12,
 
     idleMoveSpeedMultiplier: 0.4,
     idleRetargetMinSec: 1,
@@ -87,12 +92,72 @@ export const GAME_CONFIG = {
 
     unitClassChance: 0.5,
   },
-  waves: [
-    { totalEnemies: 4, spawnRateMs: 3500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
-    { totalEnemies: 7, spawnRateMs: 3000, hpMultiplier: 0.8, damageMultiplier: 0.8 },
-    { totalEnemies: 10, spawnRateMs: 1500, hpMultiplier: 0.8, damageMultiplier: 0.7 },
-    { totalEnemies: 13, spawnRateMs: 1000, hpMultiplier: 0.7, damageMultiplier: 0.55 },
-    { totalEnemies: 18, spawnRateMs: 700, hpMultiplier: 0.5, damageMultiplier: 0.35 },
+  spawnPhases: [
+    {
+      portalHpThresholdPct: 1,
+      pressureBudget: 0.4,
+      hpMultiplier: 0.46,
+      damageMultiplier: 0.36,
+      packSizeMin: 1,
+      packSizeMax: 2,
+      burstChance: 0.0,
+      burstCountMin: 2,
+      burstCountMax: 2,
+      burstIntervalMinMs: 320,
+      burstIntervalMaxMs: 460,
+    },
+    {
+      portalHpThresholdPct: 0.9,
+      pressureBudget: 0.42,
+      hpMultiplier: 0.52,
+      damageMultiplier: 0.42,
+      packSizeMin: 1,
+      packSizeMax: 3,
+      burstChance: 0.0,
+      burstCountMin: 2,
+      burstCountMax: 3,
+      burstIntervalMinMs: 300,
+      burstIntervalMaxMs: 430,
+    },
+    {
+      portalHpThresholdPct: 0.75,
+      pressureBudget: 0.45,
+      hpMultiplier: 0.6,
+      damageMultiplier: 0.48,
+      packSizeMin: 1,
+      packSizeMax: 3,
+      burstChance: 0.0,
+      burstCountMin: 2,
+      burstCountMax: 3,
+      burstIntervalMinMs: 280,
+      burstIntervalMaxMs: 390,
+    },
+    {
+      portalHpThresholdPct: 0.6,
+      pressureBudget: 0.48,
+      hpMultiplier: 0.75,
+      damageMultiplier: 0.54,
+      packSizeMin: 2,
+      packSizeMax: 3,
+      burstChance: 0.0,
+      burstCountMin: 2,
+      burstCountMax: 4,
+      burstIntervalMinMs: 250,
+      burstIntervalMaxMs: 360,
+    },
+    {
+      portalHpThresholdPct: 0.4,
+      pressureBudget: 0.5,
+      hpMultiplier: 0.9,
+      damageMultiplier: 0.6,
+      packSizeMin: 2,
+      packSizeMax: 4,
+      burstChance: 0.0,
+      burstCountMin: 3,
+      burstCountMax: 4,
+      burstIntervalMinMs: 230,
+      burstIntervalMaxMs: 340,
+    },
   ],
   colors: {
     warriorBg: [
@@ -122,7 +187,7 @@ export const GAME_CONFIG = {
 export const BOARD_CONFIG = GAME_CONFIG.board;
 export const GENERATOR_CONFIG = GAME_CONFIG.generator;
 export const BATTLE_CONFIG = GAME_CONFIG.battle;
-export const WAVES = GAME_CONFIG.waves;
+export const SPAWN_PHASES = GAME_CONFIG.spawnPhases;
 export const WARRIOR_COLORS = GAME_CONFIG.colors.warriorBg;
 export const WARRIOR_TEXT_COLORS = GAME_CONFIG.colors.warriorText;
 export const WARRIOR_HEX_COLORS = GAME_CONFIG.colors.warriorHex;

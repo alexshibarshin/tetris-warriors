@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { BATTLE_CONFIG, WAVES, WARRIOR_COLORS } from '../config';
+import { BATTLE_CONFIG, SPAWN_PHASES, WARRIOR_COLORS } from '../config';
 import { BattleState } from '../types';
 import { EnemyVisual } from './EnemyVisual';
 import { WarriorVisual } from './WarriorVisual';
@@ -84,7 +84,10 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
     return () => cancelAnimationFrame(reqRef.current);
   }, [props.onGameEnd]);
 
-  const wallHpPct = Math.max(0, state.wallHp / BATTLE_CONFIG.wallMaxHealth) * 100;
+  const playerBaseHpPct = Math.max(0, state.playerBaseHp / BATTLE_CONFIG.playerBaseMaxHealth) * 100;
+  const enemyStructureHpPct = Math.max(0, state.enemyStructureHp / BATTLE_CONFIG.enemyStructureMaxHealth) * 100;
+  const enemyStructureLeft = `${BATTLE_CONFIG.enemyStructureXRatio * 100}%`;
+  const phaseNumber = Math.min(state.phase + 1, SPAWN_PHASES.length);
 
   const getEntityTransform = (entity: BattleState['entities'][number]) => {
     const duration = entity.attackVisualDurationMs || 1;
@@ -104,12 +107,30 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
     <div className="flex-1 flex flex-col relative overflow-hidden border-b-4 border-neutral-700" ref={containerRef}>
       <div className="absolute inset-0 bg-gradient-to-b from-neutral-800 to-neutral-900 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20">
-          <span className="text-neutral-500 font-bold tracking-widest text-lg">BATTLE AREA</span>
-          {state.waveDelayTimer > 0 && state.wave < WAVES.length && (
+          <span className="text-neutral-500 font-bold tracking-[0.4em] text-lg">BATTLEFIELD</span>
+          {state.startDelayTimer > 0 && (
             <span className="text-white font-bold tracking-widest text-2xl mt-4 animate-pulse">
-              WAVE {state.wave + 1}
+              PORTAL AWAKENS
             </span>
           )}
+        </div>
+
+        <div
+          className="absolute -translate-x-1/2 z-20 pointer-events-none"
+          style={{ left: enemyStructureLeft, top: BATTLE_CONFIG.enemyStructureYPx - 28 }}
+        >
+          <div className="relative flex flex-col items-center">
+            <div className="absolute top-12 w-32 h-16 rounded-full bg-red-500/25 blur-2xl" />
+            <div className="relative w-28 h-20">
+              <div className="absolute inset-x-2 bottom-0 h-10 rounded-t-[40px] bg-neutral-950 border-2 border-red-950 shadow-[0_0_20px_rgba(0,0,0,0.6)]" />
+              <div className="absolute inset-x-5 top-5 bottom-1 rounded-[999px] border-2 border-red-500/60 bg-gradient-to-b from-red-200/20 via-red-500/30 to-red-950/70 shadow-[0_0_18px_rgba(239,68,68,0.45)]" />
+              <div className="absolute inset-x-8 top-8 bottom-4 rounded-[999px] bg-gradient-to-b from-orange-200/60 via-red-400/55 to-red-950/0 animate-pulse" />
+              <div className="absolute left-1/2 top-2 -translate-x-1/2 w-8 h-8 rotate-45 rounded-sm border border-red-300/40 bg-neutral-900" />
+            </div>
+            <div className="mt-1 text-[10px] font-black tracking-[0.35em] text-red-200/85">
+              ENEMY PORTAL
+            </div>
+          </div>
         </div>
 
         {state.entities.map((entity) => (
@@ -173,16 +194,30 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
       </div>
 
       <div className="absolute top-2 left-4 z-40 bg-black/60 px-3 py-1 rounded-full border border-neutral-700 font-mono text-sm font-bold text-white shadow-md">
-        WAVE {Math.min(state.wave + 1, WAVES.length)} / {WAVES.length}
+        PHASE {phaseNumber} / {SPAWN_PHASES.length}
+      </div>
+
+      <div className="absolute top-2 right-4 z-40 bg-black/60 px-3 py-1 rounded-full border border-red-900/80 font-mono text-sm font-bold text-red-100 shadow-md">
+        PORTAL HP: {Math.max(0, Math.floor(state.enemyStructureHp))}
+      </div>
+
+      <div className="absolute top-14 left-1/2 -translate-x-1/2 w-48 h-3 bg-red-950/80 z-30 flex items-center justify-center overflow-hidden rounded-full border border-red-900/80">
+        <div
+          className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-red-700 via-orange-500 to-amber-300 transition-all duration-300"
+          style={{ width: `${enemyStructureHpPct}%` }}
+        />
+        <span className="relative text-[10px] font-bold text-white drop-shadow-md tracking-wider">
+          ENEMY PORTAL
+        </span>
       </div>
 
       <div className="absolute bottom-4 left-0 right-0 h-3 bg-red-950/80 z-30 flex items-center justify-center overflow-hidden">
         <div
           className="absolute left-0 top-0 bottom-0 bg-red-500 transition-all duration-300"
-          style={{ width: `${wallHpPct}%` }}
+          style={{ width: `${playerBaseHpPct}%` }}
         />
         <span className="relative text-[10px] font-bold text-white drop-shadow-md tracking-wider">
-          WALL HP: {Math.max(0, Math.floor(state.wallHp))}
+          YOUR GATE HP: {Math.max(0, Math.floor(state.playerBaseHp))}
         </span>
       </div>
     </div>
