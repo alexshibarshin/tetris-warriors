@@ -14,6 +14,8 @@ export type Entity = {
   maxHp: number;
   targetId: string | null;
   attackTimer: number;
+  lifetimeRemainingSec?: number;
+  maxLifetimeSec?: number;
   idleTargetX?: number;
   idleTargetY?: number;
   idleTimer?: number;

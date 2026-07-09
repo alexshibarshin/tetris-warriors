@@ -218,6 +218,14 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
     const { bestTarget, minDistance } = findBestTarget(entity, state.entities);
     entity.targetId = bestTarget?.id ?? null;
 
+    if (entity.faction === 'player' && entity.lifetimeRemainingSec !== undefined && !bestTarget) {
+      entity.lifetimeRemainingSec = Math.max(0, entity.lifetimeRemainingSec - dt);
+      if (entity.lifetimeRemainingSec <= 0) {
+        entity.hp = 0;
+        continue;
+      }
+    }
+
     let targetX = entity.x;
     let targetY = entity.y;
     let isAttacking = false;
@@ -405,6 +413,8 @@ export function spawnPlayerWarriors(
     maxHp: BATTLE_CONFIG.warriorHp,
     targetId: null,
     attackTimer: 0,
+    lifetimeRemainingSec: BATTLE_CONFIG.playerWarriorLifetimeSec,
+    maxLifetimeSec: BATTLE_CONFIG.playerWarriorLifetimeSec,
   }));
 
   state.entities.push(...newEntities);

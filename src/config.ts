@@ -38,6 +38,7 @@ export const GAME_CONFIG = {
     wallDamage: 20,
 
     warriorHp: 36,
+    playerWarriorLifetimeSec: 5,
     enemyHp: 42,
 
     moveSpeed: 45,

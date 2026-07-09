@@ -109,7 +109,15 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
             }}
           >
             {entity.faction === 'player' ? (
-              <WarriorVisual colorIdx={entity.colorIdx} className="w-full h-full mb-1 drop-shadow-md" />
+              <WarriorVisual
+                colorIdx={entity.colorIdx}
+                lifetimeProgress={
+                  entity.lifetimeRemainingSec !== undefined && entity.maxLifetimeSec
+                    ? entity.lifetimeRemainingSec / entity.maxLifetimeSec
+                    : undefined
+                }
+                className="w-full h-full mb-1 drop-shadow-md"
+              />
             ) : (
               <EnemyVisual colorIdx={entity.colorIdx} className="w-full h-full mb-1 drop-shadow-md" />
             )}
