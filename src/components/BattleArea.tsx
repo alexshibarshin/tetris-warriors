@@ -86,6 +86,20 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
 
   const wallHpPct = Math.max(0, state.wallHp / BATTLE_CONFIG.wallMaxHealth) * 100;
 
+  const getEntityTransform = (entity: BattleState['entities'][number]) => {
+    const duration = entity.attackVisualDurationMs || 1;
+    const progress = Math.min(1, Math.max(0, 1 - entity.attackVisualTimer / duration));
+    const impulse = Math.sin(progress * Math.PI);
+
+    const lungeX = entity.attackVisualDx * BATTLE_CONFIG.attackVisualLungePx * impulse;
+    const lungeY = entity.attackVisualDy * BATTLE_CONFIG.attackVisualLungePx * impulse - BATTLE_CONFIG.attackVisualLiftPx * impulse;
+    const tilt = entity.attackVisualDx * BATTLE_CONFIG.attackVisualTiltDeg * impulse;
+    const scaleX = 1 + BATTLE_CONFIG.attackVisualStretch * impulse;
+    const scaleY = 1 - BATTLE_CONFIG.attackVisualStretch * impulse * 0.65;
+
+    return `translate(${lungeX}px, ${lungeY}px) rotate(${tilt}deg) scale(${scaleX}, ${scaleY})`;
+  };
+
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden border-b-4 border-neutral-700" ref={containerRef}>
       <div className="absolute inset-0 bg-gradient-to-b from-neutral-800 to-neutral-900 pointer-events-none overflow-hidden">
@@ -106,6 +120,8 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
               left: entity.x,
               top: entity.y,
               zIndex: Math.round(entity.y),
+              transform: getEntityTransform(entity),
+              transformOrigin: '50% 80%',
             }}
           >
             {entity.faction === 'player' ? (

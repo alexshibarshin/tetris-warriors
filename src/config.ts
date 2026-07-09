@@ -44,6 +44,11 @@ export const GAME_CONFIG = {
     projectileSpeed: 200,
 
     attackCooldownMs: 1150,
+    attackVisualDurationMs: 220,
+    attackVisualLungePx: 10,
+    attackVisualLiftPx: 4,
+    attackVisualTiltDeg: 8,
+    attackVisualStretch: 0.1,
 
     separationRadius: 25,
     separationForce: 60,

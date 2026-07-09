@@ -61,6 +61,17 @@ function addDamageText(state: BattleState, x: number, y: number, text: string, c
   });
 }
 
+function triggerAttackVisual(entity: Entity, targetX: number, targetY: number) {
+  const dx = targetX - entity.x;
+  const dy = targetY - entity.y;
+  const length = Math.sqrt(dx * dx + dy * dy) || 1;
+
+  entity.attackVisualTimer = BATTLE_CONFIG.attackVisualDurationMs;
+  entity.attackVisualDurationMs = BATTLE_CONFIG.attackVisualDurationMs;
+  entity.attackVisualDx = dx / length;
+  entity.attackVisualDy = dy / length;
+}
+
 function spawnEnemyForWave(state: BattleState, viewport: BattleViewport) {
   const currentWave = WAVES[state.wave];
   if (!currentWave) {
@@ -82,6 +93,10 @@ function spawnEnemyForWave(state: BattleState, viewport: BattleViewport) {
     maxHp: hp,
     targetId: null,
     attackTimer: 0,
+    attackVisualTimer: 0,
+    attackVisualDurationMs: BATTLE_CONFIG.attackVisualDurationMs,
+    attackVisualDx: 0,
+    attackVisualDy: 1,
   });
 }
 
@@ -214,6 +229,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
     }
 
     entity.attackTimer -= dt * 1000;
+    entity.attackVisualTimer = Math.max(0, entity.attackVisualTimer - dt * 1000);
 
     const { bestTarget, minDistance } = findBestTarget(entity, state.entities);
     entity.targetId = bestTarget?.id ?? null;
@@ -230,6 +246,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
         isAttacking = true;
         if (entity.attackTimer <= 0) {
           entity.attackTimer = BATTLE_CONFIG.attackCooldownMs;
+          triggerAttackVisual(entity, bestTarget.x, bestTarget.y);
           const damage = computeHitDamage(entity, bestTarget, state.wave);
 
           if (entity.unitClass === 'melee') {
@@ -260,6 +277,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
         isAttacking = true;
         if (entity.attackTimer <= 0) {
           entity.attackTimer = BATTLE_CONFIG.attackCooldownMs;
+          triggerAttackVisual(entity, entity.x, viewport.height + BATTLE_CONFIG.meleeRange);
           const currentWave = WAVES[state.wave] || WAVES[WAVES.length - 1];
           const wallDamage = Math.round(BATTLE_CONFIG.wallDamage * currentWave.damageMultiplier);
           state.wallHp -= wallDamage;
@@ -405,6 +423,10 @@ export function spawnPlayerWarriors(
     maxHp: BATTLE_CONFIG.warriorHp,
     targetId: null,
     attackTimer: 0,
+    attackVisualTimer: 0,
+    attackVisualDurationMs: BATTLE_CONFIG.attackVisualDurationMs,
+    attackVisualDx: 0,
+    attackVisualDy: -1,
   }));
 
   state.entities.push(...newEntities);
