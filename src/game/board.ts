@@ -23,10 +23,64 @@ export function generateCell(): CellData {
   };
 }
 
+export function createEmptyCell(): CellData {
+  return { state: 'empty' };
+}
+
 export function createInitialBoard(): CellData[][] {
-  return Array.from({ length: BOARD_CONFIG.rows }, () =>
-    Array.from({ length: BOARD_CONFIG.cols }, generateCell),
+  let board = Array.from({ length: BOARD_CONFIG.rows }, () =>
+    Array.from({ length: BOARD_CONFIG.cols }, createEmptyCell),
   );
+
+  const totalCells = BOARD_CONFIG.rows * BOARD_CONFIG.cols;
+  const cellsToFill = Math.min(BOARD_CONFIG.initialFilledCells, totalCells);
+
+  for (let i = 0; i < cellsToFill; i += 1) {
+    board = fillRandomEmptyCell(board);
+  }
+
+  return board;
+}
+
+export function fillRandomEmptyCell(board: CellData[][]): CellData[][] {
+  const targetCell = pickRandomEmptyCell(board);
+
+  if (!targetCell) {
+    return board;
+  }
+
+  return fillCell(board, targetCell);
+}
+
+export function pickRandomEmptyCell(board: CellData[][]): BoardCellPosition | null {
+  const emptyCells: BoardCellPosition[] = [];
+
+  board.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (cell.state === 'empty') {
+        emptyCells.push({ r, c });
+      }
+    });
+  });
+
+  if (emptyCells.length === 0) {
+    return null;
+  }
+
+  return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+}
+
+export function fillCell(board: CellData[][], cell: BoardCellPosition): CellData[][] {
+  const nextBoard = board.map((row) => [...row]);
+  const targetCell = nextBoard[cell.r]?.[cell.c];
+
+  if (!targetCell || targetCell.state !== 'empty') {
+    return board;
+  }
+
+  nextBoard[cell.r][cell.c] = generateCell();
+
+  return nextBoard;
 }
 
 export function evaluatePlacementPreview(params: {
@@ -111,7 +165,7 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
       });
     }
 
-    nextBoard[r][c] = { ...cell, state: 'cooldown' };
+    nextBoard[r][c] = createEmptyCell();
   }
 
   return {
@@ -119,17 +173,5 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
     activatedCells,
     earnedCoins,
     spawnedWarriors,
-    cooldownCells: activatedCells,
   };
-}
-
-export function refreshBoardCell(board: CellData[][], cell: BoardCellPosition) {
-  const nextBoard = board.map((row) => [...row]);
-  const current = nextBoard[cell.r]?.[cell.c];
-
-  if (current?.state === 'cooldown') {
-    nextBoard[cell.r][cell.c] = generateCell();
-  }
-
-  return nextBoard;
 }

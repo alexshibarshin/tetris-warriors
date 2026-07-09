@@ -4,10 +4,7 @@ import { BOARD_CONFIG, GENERATOR_CONFIG } from './config';
 import { BattleArea, BattleAreaRef } from './components/BattleArea';
 import { WarriorVisual } from './components/WarriorVisual';
 import { DEFAULT_GAME_DESIGN } from './game/design';
-import {
-  evaluatePlacementPreview,
-  refreshBoardCell,
-} from './game/board';
+import { evaluatePlacementPreview } from './game/board';
 import {
   BoardCellPosition,
   CellData,
@@ -112,6 +109,9 @@ export default function App() {
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [boardRect, setBoardRect] = useState<DOMRect | null>(null);
   const [generatorRect, setGeneratorRect] = useState<DOMRect | null>(null);
+  const [nextSpawnCell, setNextSpawnCell] = useState<BoardCellPosition | null>(null);
+  const [nextSpawnProgress, setNextSpawnProgress] = useState(0);
+  const [nextSpawnStartedAt, setNextSpawnStartedAt] = useState<number | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const generatorRef = useRef<HTMLDivElement>(null);
@@ -136,6 +136,57 @@ export default function App() {
     return () => window.removeEventListener('resize', measure);
   }, []);
 
+  useEffect(() => {
+    if (gameStatus !== 'playing') {
+      setNextSpawnCell(null);
+      setNextSpawnProgress(0);
+      setNextSpawnStartedAt(null);
+      return;
+    }
+
+    if (nextSpawnCell) {
+      return;
+    }
+
+    const targetCell = DEFAULT_GAME_DESIGN.board.pickRandomEmptyCell(board);
+
+    if (!targetCell) {
+      setNextSpawnProgress(0);
+      setNextSpawnStartedAt(null);
+      return;
+    }
+
+    setNextSpawnCell(targetCell);
+    setNextSpawnProgress(0);
+    setNextSpawnStartedAt(performance.now());
+  }, [board, gameStatus, nextSpawnCell]);
+
+  useEffect(() => {
+    if (gameStatus !== 'playing' || !nextSpawnCell || nextSpawnStartedAt === null) {
+      return;
+    }
+
+    let frameId = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - nextSpawnStartedAt) / BOARD_CONFIG.respawnIntervalMs, 1);
+      setNextSpawnProgress(progress);
+
+      if (progress >= 1) {
+        setBoard((currentBoard) => DEFAULT_GAME_DESIGN.board.fillCell(currentBoard, nextSpawnCell));
+        setNextSpawnCell(null);
+        setNextSpawnStartedAt(null);
+        setNextSpawnProgress(0);
+        return;
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [gameStatus, nextSpawnCell, nextSpawnStartedAt]);
+
   const handleRestart = () => {
     setCoins(0);
     setBoard(DEFAULT_GAME_DESIGN.board.createInitialBoard());
@@ -144,6 +195,9 @@ export default function App() {
     setGameStatus('playing');
     setDragState('idle');
     setActivatedCells([]);
+    setNextSpawnCell(null);
+    setNextSpawnProgress(0);
+    setNextSpawnStartedAt(null);
     battleAreaRef.current?.reset();
   };
 
@@ -169,12 +223,6 @@ export default function App() {
         if (activationResult.spawnedWarriors.length > 0) {
           battleAreaRef.current?.spawnWarriors(activationResult.spawnedWarriors, BOARD_CONFIG.cols);
         }
-
-        activationResult.cooldownCells.forEach((cell) => {
-          setTimeout(() => {
-            setBoard((prevBoard) => refreshBoardCell(prevBoard, cell));
-          }, BOARD_CONFIG.cellCooldownMs);
-        });
       }
 
       setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
@@ -198,6 +246,9 @@ export default function App() {
 
   const isCellActivated = (r: number, c: number) =>
     activatedCells.some((cell) => cell.r === r && cell.c === c);
+
+  const isNextSpawnCell = (r: number, c: number) =>
+    nextSpawnCell?.r === r && nextSpawnCell?.c === c;
 
   const renderPiece = () => {
     if (generatorStage === 0 || !shape || !cellSize || !generatorRect) {
@@ -346,9 +397,9 @@ export default function App() {
                       </div>
                     )}
 
-                    {cell.state === 'cooldown' && (
+                    {cell.state === 'empty' && isNextSpawnCell(r, c) && (
                       <div className="absolute inset-1 rounded-sm bg-neutral-950/40 flex items-center justify-center">
-                        <motion.svg className="absolute w-3/4 h-3/4 -rotate-90" viewBox="0 0 36 36">
+                        <svg className="absolute w-3/4 h-3/4 -rotate-90" viewBox="0 0 36 36">
                           <path
                             className="text-neutral-800"
                             strokeWidth="4"
@@ -356,19 +407,16 @@ export default function App() {
                             fill="transparent"
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           />
-                          <motion.path
+                          <path
                             className="text-white/50"
                             strokeWidth="4"
-                            strokeDasharray="100, 100"
+                            strokeDasharray={`${nextSpawnProgress * 100}, 100`}
                             stroke="currentColor"
                             fill="transparent"
                             strokeLinecap="round"
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                            initial={{ strokeDashoffset: 100 }}
-                            animate={{ strokeDashoffset: 0 }}
-                            transition={{ duration: BOARD_CONFIG.cellCooldownMs / 1000, ease: 'linear' }}
                           />
-                        </motion.svg>
+                        </svg>
                       </div>
                     )}
 

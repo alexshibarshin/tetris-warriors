@@ -1,8 +1,8 @@
 export type CellType = 'warrior' | 'coin';
-export type CellState = 'ready' | 'cooldown';
+export type CellState = 'empty' | 'ready';
 
 export type CellData = {
-  type: CellType;
+  type?: CellType;
   colorIdx?: number;
   state: CellState;
 };
@@ -51,5 +51,4 @@ export type BoardActivationResult = {
   activatedCells: BoardCellPosition[];
   earnedCoins: number;
   spawnedWarriors: WarriorSpawnRequest[];
-  cooldownCells: BoardCellPosition[];
 };

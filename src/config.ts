@@ -4,7 +4,8 @@ export const GAME_CONFIG = {
     rows: 4,
     maxWidthPx: 320,
     dragPreviewExpandFactor: 0.5,
-    cellCooldownMs: 20000,
+    initialFilledCells: 8,
+    respawnIntervalMs: 3000,
     activationFlashMs: 250,
   },
   generator: {
@@ -82,11 +83,11 @@ export const GAME_CONFIG = {
     unitClassChance: 0.5,
   },
   waves: [
-    { totalEnemies: 4, spawnRateMs: 4500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
-    { totalEnemies: 7, spawnRateMs: 4200, hpMultiplier: 0.75, damageMultiplier: 0.75 },
-    { totalEnemies: 9, spawnRateMs: 4100, hpMultiplier: 0.8, damageMultiplier: 0.8 },
-    { totalEnemies: 11, spawnRateMs: 3800, hpMultiplier: 1.0, damageMultiplier: 1.0 },
-    { totalEnemies: 15, spawnRateMs: 3700, hpMultiplier: 1.2, damageMultiplier: 1.0 },
+    { totalEnemies: 4, spawnRateMs: 3500, hpMultiplier: 0.65, damageMultiplier: 0.65 },
+    { totalEnemies: 7, spawnRateMs: 3000, hpMultiplier: 0.8, damageMultiplier: 0.8 },
+    { totalEnemies: 10, spawnRateMs: 1500, hpMultiplier: 0.8, damageMultiplier: 0.7 },
+    { totalEnemies: 13, spawnRateMs: 1000, hpMultiplier: 0.7, damageMultiplier: 0.55 },
+    { totalEnemies: 18, spawnRateMs: 700, hpMultiplier: 0.5, damageMultiplier: 0.35 },
   ],
   colors: {
     warriorBg: [
