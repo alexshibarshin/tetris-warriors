@@ -163,6 +163,7 @@ export default function App() {
     phase: 0,
   });
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeCard[] | null>(null);
+  const [upgradeRerollAvailable, setUpgradeRerollAvailable] = useState(false);
   const [boardRect, setBoardRect] = useState<DOMRect | null>(null);
   const [generatorRect, setGeneratorRect] = useState<DOMRect | null>(null);
   const [nextSpawnCell, setNextSpawnCell] = useState<BoardCellPosition | null>(null);
@@ -275,6 +276,7 @@ export default function App() {
     setGameStatus('playing');
     setDragState('idle');
     setUpgradeChoices(null);
+    setUpgradeRerollAvailable(false);
     setActivatedCells([]);
     setNextSpawnCell(null);
     setNextSpawnProgress(0);
@@ -340,7 +342,26 @@ export default function App() {
 
     setCoins((currentCoins) => currentCoins - PROGRESSION_CONFIG.upgradeCostCoins);
     setUpgradeChoices(choices);
+    setUpgradeRerollAvailable(true);
     setDragState('idle');
+  };
+
+  const rerollUpgradeDraft = () => {
+    if (!upgradeRerollAvailable || gameStatus !== 'playing' || !isUpgradeOpen) {
+      return;
+    }
+
+    const choices = generateUpgradeChoices(playerBuild, {
+      playerBaseHp: battleSnapshot.playerBaseHp,
+      playerBaseMaxHp: battleSnapshot.playerBaseMaxHp,
+    });
+
+    if (choices.length < 3) {
+      return;
+    }
+
+    setUpgradeChoices(choices);
+    setUpgradeRerollAvailable(false);
   };
 
   const applyUpgrade = (card: UpgradeCard) => {
@@ -351,6 +372,7 @@ export default function App() {
         playerBaseHp: Math.min(current.playerBaseMaxHp, current.playerBaseHp + current.playerBaseMaxHp * card.healFraction),
       }));
       setUpgradeChoices(null);
+      setUpgradeRerollAvailable(false);
       return;
     }
 
@@ -364,6 +386,7 @@ export default function App() {
         ),
       );
       setUpgradeChoices(null);
+      setUpgradeRerollAvailable(false);
       return;
     }
 
@@ -375,6 +398,7 @@ export default function App() {
     }
 
     setUpgradeChoices(null);
+    setUpgradeRerollAvailable(false);
   };
 
   const isCellHighlighted = (r: number, c: number) =>
@@ -705,6 +729,16 @@ export default function App() {
                         );
                       })()
                     ))}
+                  </div>
+
+                  <div className="flex justify-center pt-1">
+                    <button
+                      onClick={rerollUpgradeDraft}
+                      disabled={!upgradeRerollAvailable}
+                      className="rounded-full border border-white/12 bg-white/6 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-white/88 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+                    >
+                      Reroll
+                    </button>
                   </div>
                 </div>
               </motion.div>

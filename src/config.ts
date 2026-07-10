@@ -4,7 +4,7 @@ export const GAME_CONFIG = {
     rows: 4,
     maxWidthPx: 320,
     dragPreviewExpandFactor: 0.5,
-    initialFilledCells: 8,
+    initialFilledCells: 9,
     initialCoins: 2,
     respawnIntervalMs: 5000,
     activationFlashMs: 250,
@@ -57,8 +57,8 @@ export const GAME_CONFIG = {
     separationRadius: 25,
     separationForce: 60,
 
-    warriorWrongColorDamageMultiplier: 0.75,
-    enemyWrongColorDamageMultiplier: 1.2,
+    warriorWrongColorDamageMultiplier: 0.7,
+    enemyWrongColorDamageMultiplier: 1.3,
 
     playerSpawnYOffsetPx: 10,
     enemySpawnYOffsetPx: 128,
@@ -101,7 +101,7 @@ export const GAME_CONFIG = {
     upgradeCostCoins: 1,
     maxTier: 4,
     tierStatBonusPerLevel: 0.5,
-    tierUpgradeSpawnWeightMultiplier: 1.2,
+    tierUpgradeSpawnWeightMultiplier: 1.1,
     wallHealFraction: 0.25,
     wallHealOfferMinMissingFraction: 0.15,
     rarityOfferWeights: {
