@@ -113,16 +113,18 @@ function randomRange(min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 
-function getPhaseIndexForPortalHp(enemyStructureHp: number) {
-  const hpPct = enemyStructureHp / BATTLE_CONFIG.enemyStructureMaxHealth;
+function getPhaseIndexForTime(battleTimeSec: number) {
+  let phaseIndex = 0;
 
-  for (let index = SPAWN_PHASES.length - 1; index >= 0; index -= 1) {
-    if (hpPct <= SPAWN_PHASES[index].portalHpThresholdPct) {
-      return index;
+  for (let index = 0; index < SPAWN_PHASES.length; index += 1) {
+    if (battleTimeSec >= SPAWN_PHASES[index].startAtSec) {
+      phaseIndex = index;
+    } else {
+      break;
     }
   }
 
-  return 0;
+  return phaseIndex;
 }
 
 function spawnEnemyFromStructure(state: BattleState, viewport: BattleViewport) {
@@ -225,7 +227,7 @@ function updateWaveFlow(state: BattleState, _time: number, lastEnemySpawnAt: num
     return { lastEnemySpawnAt, outcome: undefined as BattleStepResult['outcome'] };
   }
 
-  const phaseIndex = getPhaseIndexForPortalHp(state.enemyStructureHp);
+  const phaseIndex = getPhaseIndexForTime(state.battleTimeSec);
   state.phase = phaseIndex;
 
   const structure = getEnemyStructurePosition(viewport);

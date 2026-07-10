@@ -94,7 +94,7 @@ export const GAME_CONFIG = {
   },
   spawnPhases: [
     {
-      portalHpThresholdPct: 1,
+      startAtSec: 0,
       pressureBudget: 0.4,
       hpMultiplier: 0.46,
       damageMultiplier: 0.36,
@@ -107,7 +107,7 @@ export const GAME_CONFIG = {
       burstIntervalMaxMs: 460,
     },
     {
-      portalHpThresholdPct: 0.9,
+      startAtSec: 20,
       pressureBudget: 0.42,
       hpMultiplier: 0.52,
       damageMultiplier: 0.42,
@@ -120,7 +120,7 @@ export const GAME_CONFIG = {
       burstIntervalMaxMs: 430,
     },
     {
-      portalHpThresholdPct: 0.75,
+      startAtSec: 40,
       pressureBudget: 0.45,
       hpMultiplier: 0.6,
       damageMultiplier: 0.48,
@@ -133,7 +133,7 @@ export const GAME_CONFIG = {
       burstIntervalMaxMs: 390,
     },
     {
-      portalHpThresholdPct: 0.6,
+      startAtSec: 60,
       pressureBudget: 0.48,
       hpMultiplier: 0.75,
       damageMultiplier: 0.54,
@@ -146,7 +146,7 @@ export const GAME_CONFIG = {
       burstIntervalMaxMs: 360,
     },
     {
-      portalHpThresholdPct: 0.4,
+      startAtSec: 90,
       pressureBudget: 0.5,
       hpMultiplier: 0.9,
       damageMultiplier: 0.6,
