@@ -468,8 +468,8 @@ export default function App() {
                 </div>
                 <div className="text-neutral-400 text-center text-sm font-medium">
                   {gameStatus === 'victory'
-                    ? 'You successfully defended the wall against all waves.'
-                    : 'The wall has fallen. The enemy broke through.'}
+                    ? 'The enemy portal collapsed. Your warband broke the siege.'
+                    : 'Your gate fell before the portal could be destroyed.'}
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xl font-bold bg-black/30 px-6 py-3 rounded-xl border border-neutral-800 w-full">
                   <span>💰</span>

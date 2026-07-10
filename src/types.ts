@@ -29,7 +29,8 @@ export type Projectile = {
   y: number;
   vx: number;
   vy: number;
-  targetId: string;
+  targetId: string | 'enemy-structure';
+  targetKind: 'entity' | 'enemyStructure';
   damage: number;
   colorIdx: number;
   faction: Faction;
@@ -49,9 +50,14 @@ export type BattleState = {
   entities: Entity[];
   projectiles: Projectile[];
   damageTexts: DamageText[];
-  wallHp: number;
-  wave: number;
-  enemiesSpawnedInWave: number;
-  waveDelayTimer: number;
+  playerBaseHp: number;
+  enemyStructureHp: number;
+  battleTimeSec: number;
+  phase: number;
+  startDelayTimer: number;
+  enemyStructureAttackTimer: number;
+  enemySpawnCooldownMs: number;
+  burstSpawnsRemaining: number;
+  burstSpawnCooldownMs: number;
   status: 'playing' | 'victory' | 'defeat';
 };
