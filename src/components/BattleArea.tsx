@@ -212,111 +212,118 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
             top: battleLayout.offsetY,
             width: battleLayout.viewport.width,
             height: BATTLE_CONFIG.gameplayHeightPx,
-            transform: `translateX(-50%) scale(${battleLayout.scale})`,
-            transformOrigin: 'top center',
+            transform: 'translateX(-50%)',
           }}
         >
-          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20">
-            <span className="text-neutral-500 font-bold tracking-[0.4em] text-lg">BATTLEFIELD</span>
-            {state.startDelayTimer > 0 && (
-              <span className="text-white font-bold tracking-widest text-2xl mt-4 animate-pulse">
-                PORTAL AWAKENS
-              </span>
-            )}
-          </div>
-
           <div
-            className="absolute -translate-x-1/2 z-20 pointer-events-none"
-            style={{ left: enemyStructureLeft, top: BATTLE_CONFIG.enemyStructureYPx - 28 }}
+            className="absolute inset-0"
+            style={{
+              transform: `scale(${battleLayout.scale})`,
+              transformOrigin: 'top center',
+            }}
           >
-            <div className="relative flex flex-col items-center">
-              <div className="absolute top-12 w-32 h-16 rounded-full bg-red-500/25 blur-2xl" />
-              <div className="relative w-28 h-20">
-                <div className="absolute inset-x-2 bottom-0 h-10 rounded-t-[40px] bg-neutral-950 border-2 border-red-950 shadow-[0_0_20px_rgba(0,0,0,0.6)]" />
-                <div className="absolute inset-x-5 top-5 bottom-1 rounded-[999px] border-2 border-red-500/60 bg-gradient-to-b from-red-200/20 via-red-500/30 to-red-950/70 shadow-[0_0_18px_rgba(239,68,68,0.45)]" />
-                <div className="absolute inset-x-8 top-8 bottom-4 rounded-[999px] bg-gradient-to-b from-orange-200/60 via-red-400/55 to-red-950/0 animate-pulse" />
-                <div className="absolute left-1/2 top-2 -translate-x-1/2 w-8 h-8 rotate-45 rounded-sm border border-red-300/40 bg-neutral-900" />
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                {props.stageTheme.dominantColorIndices.map((colorIdx) => (
-                  <span
-                    key={colorIdx}
-                    className={`w-3 h-3 rounded-full border border-white/50 ${WARRIOR_COLORS[colorIdx]}`}
-                  />
-                ))}
-                <span className="w-3 h-3 rounded-full border border-white/30" style={{ backgroundColor: NEUTRAL_HEX_COLOR }} />
-              </div>
-              <div className="mt-1 text-[10px] font-black tracking-[0.35em] text-red-200/85">
-                ENEMY PORTAL
-              </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20">
+              <span className="text-neutral-500 font-bold tracking-[0.4em] text-lg">BATTLEFIELD</span>
+              {state.startDelayTimer > 0 && (
+                <span className="text-white font-bold tracking-widest text-2xl mt-4 animate-pulse">
+                  PORTAL AWAKENS
+                </span>
+              )}
             </div>
-          </div>
 
-          {state.entities.map((entity) => (
             <div
-              key={entity.id}
-              className="absolute -ml-6 -mt-8 w-12 h-16 flex flex-col items-center justify-end transition-transform duration-75"
-              style={{
-                left: entity.x,
-                top: entity.y,
-                zIndex: Math.round(entity.y),
-                transform: getEntityTransform(entity),
-                transformOrigin: '50% 80%',
-              }}
+              className="absolute -translate-x-1/2 z-20 pointer-events-none"
+              style={{ left: enemyStructureLeft, top: BATTLE_CONFIG.enemyStructureYPx - 28 }}
             >
-              {entity.faction === 'player' ? (
-                <div className="relative w-full h-full mb-1">
-                  <WarriorVisual colorIdx={entity.colorIdx ?? 0} tier={entity.tier} className="w-full h-full drop-shadow-md" />
-                  <TierStars tier={entity.tier} />
+              <div className="relative flex flex-col items-center">
+                <div className="absolute top-12 w-32 h-16 rounded-full bg-red-500/25 blur-2xl" />
+                <div className="relative w-28 h-20">
+                  <div className="absolute inset-x-2 bottom-0 h-10 rounded-t-[40px] bg-neutral-950 border-2 border-red-950 shadow-[0_0_20px_rgba(0,0,0,0.6)]" />
+                  <div className="absolute inset-x-5 top-5 bottom-1 rounded-[999px] border-2 border-red-500/60 bg-gradient-to-b from-red-200/20 via-red-500/30 to-red-950/70 shadow-[0_0_18px_rgba(239,68,68,0.45)]" />
+                  <div className="absolute inset-x-8 top-8 bottom-4 rounded-[999px] bg-gradient-to-b from-orange-200/60 via-red-400/55 to-red-950/0 animate-pulse" />
+                  <div className="absolute left-1/2 top-2 -translate-x-1/2 w-8 h-8 rotate-45 rounded-sm border border-red-300/40 bg-neutral-900" />
                 </div>
-              ) : (
-                <EnemyVisual colorIdx={entity.colorIdx} className="w-full h-full mb-1 drop-shadow-md" />
-              )}
-
-              <div className="absolute -right-1 top-2 w-4 h-4 rounded-full border border-black/50 flex items-center justify-center text-[10px] bg-white/20 text-white font-bold drop-shadow-sm">
-                {entity.unitClass === 'melee' ? '⚔' : '⚚'}
+                <div className="mt-1 flex items-center gap-1.5">
+                  {props.stageTheme.dominantColorIndices.map((colorIdx) => (
+                    <span
+                      key={colorIdx}
+                      className={`w-3 h-3 rounded-full border border-white/50 ${WARRIOR_COLORS[colorIdx]}`}
+                    />
+                  ))}
+                  <span className="w-3 h-3 rounded-full border border-white/30" style={{ backgroundColor: NEUTRAL_HEX_COLOR }} />
+                </div>
+                <div className="mt-1 text-[10px] font-black tracking-[0.35em] text-red-200/85">
+                  ENEMY PORTAL
+                </div>
               </div>
+            </div>
 
-              <div className="absolute -bottom-2 w-8 h-1.5 bg-black/80 rounded-full overflow-hidden border border-neutral-700">
-                <div
-                  className="h-full bg-green-500 transition-all duration-200"
-                  style={{ width: `${(entity.hp / entity.maxHp) * 100}%` }}
-                />
+            {state.entities.map((entity) => (
+              <div
+                key={entity.id}
+                className="absolute -ml-6 -mt-8 w-12 h-16 flex flex-col items-center justify-end transition-transform duration-75"
+                style={{
+                  left: entity.x,
+                  top: entity.y,
+                  zIndex: Math.round(entity.y),
+                  transform: getEntityTransform(entity),
+                  transformOrigin: '50% 80%',
+                }}
+              >
+                {entity.faction === 'player' ? (
+                  <div className="relative w-full h-full mb-1">
+                    <WarriorVisual colorIdx={entity.colorIdx ?? 0} tier={entity.tier} className="w-full h-full drop-shadow-md" />
+                    <TierStars tier={entity.tier} />
+                  </div>
+                ) : (
+                  <EnemyVisual colorIdx={entity.colorIdx} className="w-full h-full mb-1 drop-shadow-md" />
+                )}
+
+                <div className="absolute -right-1 top-2 w-4 h-4 rounded-full border border-black/50 flex items-center justify-center text-[10px] bg-white/20 text-white font-bold drop-shadow-sm">
+                  {entity.unitClass === 'melee' ? '⚔' : '⚚'}
+                </div>
+
+                <div className="absolute -bottom-2 w-8 h-1.5 bg-black/80 rounded-full overflow-hidden border border-neutral-700">
+                  <div
+                    className="h-full bg-green-500 transition-all duration-200"
+                    style={{ width: `${(entity.hp / entity.maxHp) * 100}%` }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {state.projectiles.map((projectile) => (
-            <div
-              key={projectile.id}
-              className="absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]"
-              style={{
-                left: projectile.x,
-                top: projectile.y,
-                backgroundColor: projectile.colorIdx === null ? NEUTRAL_HEX_COLOR : undefined,
-              }}
-            >
-              {projectile.colorIdx !== null && (
-                <div className={`w-full h-full rounded-full ${WARRIOR_COLORS[projectile.colorIdx]}`} />
-              )}
-            </div>
-          ))}
+            {state.projectiles.map((projectile) => (
+              <div
+                key={projectile.id}
+                className="absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                style={{
+                  left: projectile.x,
+                  top: projectile.y,
+                  backgroundColor: projectile.colorIdx === null ? NEUTRAL_HEX_COLOR : undefined,
+                }}
+              >
+                {projectile.colorIdx !== null && (
+                  <div className={`w-full h-full rounded-full ${WARRIOR_COLORS[projectile.colorIdx]}`} />
+                )}
+              </div>
+            ))}
 
-          {state.damageTexts.map((damageText) => (
-            <div
-              key={damageText.id}
-              className="absolute font-bold text-lg font-mono drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] pointer-events-none"
-              style={{
-                left: damageText.x,
-                top: damageText.y,
-                color: damageText.color,
-                opacity: damageText.life / damageText.maxLife,
-                transform: 'translateX(-50%)',
-              }}
-            >
-              {damageText.text}
-            </div>
-          ))}
+            {state.damageTexts.map((damageText) => (
+              <div
+                key={damageText.id}
+                className="absolute font-bold text-lg font-mono drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] pointer-events-none"
+                style={{
+                  left: damageText.x,
+                  top: damageText.y,
+                  color: damageText.color,
+                  opacity: damageText.life / damageText.maxLife,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                {damageText.text}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -328,21 +335,17 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
         PHASE {phaseNumber} / {SPAWN_PHASES.length}
       </div>
 
-      <div className="absolute top-2 right-4 z-40 bg-black/60 px-3 py-1 rounded-full border border-red-900/80 font-mono text-sm font-bold text-red-100 shadow-md">
-        PORTAL HP: {Math.max(0, Math.floor(state.enemyStructureHp))}
-      </div>
-
-      <div className="absolute top-14 left-1/2 -translate-x-1/2 w-48 h-3 bg-red-950/80 z-30 flex items-center justify-center overflow-hidden rounded-full border border-red-900/80">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-2.5 bg-red-950/75 z-30 flex items-center justify-center overflow-hidden rounded-full border border-red-900/70">
         <div
           className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-red-700 via-orange-500 to-amber-300 transition-all duration-300"
           style={{ width: `${enemyStructureHpPct}%` }}
         />
-        <span className="relative text-[10px] font-bold text-white drop-shadow-md tracking-wider">
-          ENEMY PORTAL
+        <span className="relative px-2 text-[9px] font-bold text-white drop-shadow-md tracking-wide">
+          {Math.max(0, Math.floor(state.enemyStructureHp))} / {BATTLE_CONFIG.enemyStructureMaxHealth}
         </span>
       </div>
 
-      <div className="absolute bottom-4 left-0 right-0 h-3 bg-red-950/80 z-30 flex items-center justify-center overflow-hidden">
+      <div className="absolute bottom-1 left-3 right-3 h-3 bg-red-950/80 z-30 flex items-center justify-center overflow-hidden rounded-full border border-red-950/80">
         <div
           className="absolute left-0 top-0 bottom-0 bg-red-500 transition-all duration-300"
           style={{ width: `${playerBaseHpPct}%` }}

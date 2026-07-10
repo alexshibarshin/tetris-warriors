@@ -52,13 +52,17 @@ export function createInitialBoard(build: PlayerBuildState): CellData[][] {
       return board;
     }
 
-    const nextBoard = board.map((row) => [...row]);
-    nextBoard[targetCell.r][targetCell.c] = createCoinCell();
-    board = nextBoard;
+    board = fillCellWithData(board, targetCell, createCoinCell());
   }
 
   for (let i = initialCoins; i < cellsToFill; i += 1) {
-    board = fillRandomEmptyCell(board, build);
+    const targetCell = pickRandomEmptyCell(board);
+
+    if (!targetCell) {
+      return board;
+    }
+
+    board = fillCellWithData(board, targetCell, createRandomWarriorCell(build));
   }
 
   return board;
@@ -73,6 +77,11 @@ function createWarriorCell(build: PlayerBuildState, colorIdx: number): CellData 
     tier: entry.tier,
     state: 'ready',
   };
+}
+
+function createRandomWarriorCell(build: PlayerBuildState): CellData {
+  const colorIdx = pickWeightedDeckColor(build);
+  return createWarriorCell(build, colorIdx);
 }
 
 export function fillRandomEmptyCell(board: CellData[][], build: PlayerBuildState): CellData[][] {
@@ -112,6 +121,19 @@ export function fillCell(board: CellData[][], cell: BoardCellPosition, build: Pl
   }
 
   nextBoard[cell.r][cell.c] = generateCell(build);
+
+  return nextBoard;
+}
+
+function fillCellWithData(board: CellData[][], cell: BoardCellPosition, data: CellData): CellData[][] {
+  const nextBoard = board.map((row) => [...row]);
+  const targetCell = nextBoard[cell.r]?.[cell.c];
+
+  if (!targetCell || targetCell.state !== 'empty') {
+    return board;
+  }
+
+  nextBoard[cell.r][cell.c] = data;
 
   return nextBoard;
 }
