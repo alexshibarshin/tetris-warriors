@@ -1,8 +1,9 @@
 import React from 'react';
 import { WARRIOR_TEXT_COLORS } from '../config';
 
-export function EnemyVisual({ colorIdx, className = '' }: { colorIdx: number, className?: string }) {
-  const textColor = WARRIOR_TEXT_COLORS[colorIdx] || 'text-gray-500';
+export function EnemyVisual({ colorIdx, className = '' }: { colorIdx: number | null, className?: string }) {
+  const textColor = colorIdx === null ? 'text-gray-400' : (WARRIOR_TEXT_COLORS[colorIdx] || 'text-gray-500');
+  const eyeColor = colorIdx === null ? '#e5e7eb' : '#ef4444';
   return (
     <div className={`flex items-center justify-center ${textColor} ${className}`}>
       <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_4px_5px_rgba(0,0,0,0.7)] overflow-visible">
@@ -17,8 +18,8 @@ export function EnemyVisual({ colorIdx, className = '' }: { colorIdx: number, cl
           <polygon points="50,5 75,25 65,50 35,50 25,25" fill="#333" />
           
           {/* Eyes (glowing red) */}
-          <circle cx="40" cy="30" r="4" fill="#ef4444" stroke="none" />
-          <circle cx="60" cy="30" r="4" fill="#ef4444" stroke="none" />
+          <circle cx="40" cy="30" r="4" fill={eyeColor} stroke="none" />
+          <circle cx="60" cy="30" r="4" fill={eyeColor} stroke="none" />
           
           {/* Horns */}
           <path d="M 30,18 L 15,5 L 25,25" fill="none" stroke="#222" strokeWidth="4" strokeLinecap="round" />

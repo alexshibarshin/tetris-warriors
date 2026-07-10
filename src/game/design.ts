@@ -1,6 +1,6 @@
 import { generateShapeSequence } from './generator';
-import { applyShapeToBoard, createInitialBoard, fillCell, fillRandomEmptyCell, generateCell, pickRandomEmptyCell } from './board';
-import { createBattleState, spawnPlayerWarriors, stepBattleState } from './battle';
+import { applyShapeToBoard, createInitialBoard, fillCell, fillRandomEmptyCell, fillRandomEmptyCellsWithColor, generateCell, pickRandomEmptyCell } from './board';
+import { createBattleState, healPlayerBase, spawnPlayerWarriors, stepBattleState } from './battle';
 
 export const DEFAULT_GAME_DESIGN = {
   board: {
@@ -8,6 +8,7 @@ export const DEFAULT_GAME_DESIGN = {
     fillCell,
     generateCell,
     fillRandomEmptyCell,
+    fillRandomEmptyCellsWithColor,
     pickRandomEmptyCell,
     applyShapeToBoard,
   },
@@ -16,6 +17,7 @@ export const DEFAULT_GAME_DESIGN = {
   },
   battle: {
     createBattleState,
+    healPlayerBase,
     spawnPlayerWarriors,
     stepBattleState,
   },

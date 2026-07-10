@@ -1,4 +1,4 @@
-import { BOARD_CONFIG, GENERATOR_CONFIG, WARRIOR_COLORS } from '../config';
+import { BOARD_CONFIG, GENERATOR_CONFIG } from '../config';
 import {
   BoardActivationResult,
   BoardCellPosition,
@@ -8,17 +8,22 @@ import {
   PointerPosition,
   ShapeDef,
 } from './types';
+import { getDeckEntry, pickWeightedDeckColor, PlayerBuildState } from './progression';
 
-export function generateCell(): CellData {
+export function generateCell(build: PlayerBuildState): CellData {
   const isCoin = Math.random() < GENERATOR_CONFIG.coinChance;
 
   if (isCoin) {
-    return { type: 'coin', state: 'ready' };
+    return createCoinCell();
   }
+
+  const colorIdx = pickWeightedDeckColor(build);
+  const entry = getDeckEntry(build, colorIdx);
 
   return {
     type: 'warrior',
-    colorIdx: Math.floor(Math.random() * WARRIOR_COLORS.length),
+    colorIdx,
+    tier: entry.tier,
     state: 'ready',
   };
 }
@@ -27,29 +32,57 @@ export function createEmptyCell(): CellData {
   return { state: 'empty' };
 }
 
-export function createInitialBoard(): CellData[][] {
+function createCoinCell(): CellData {
+  return { type: 'coin', state: 'ready' };
+}
+
+export function createInitialBoard(build: PlayerBuildState): CellData[][] {
   let board = Array.from({ length: BOARD_CONFIG.rows }, () =>
     Array.from({ length: BOARD_CONFIG.cols }, createEmptyCell),
   );
 
   const totalCells = BOARD_CONFIG.rows * BOARD_CONFIG.cols;
   const cellsToFill = Math.min(BOARD_CONFIG.initialFilledCells, totalCells);
+  const initialCoins = Math.min(BOARD_CONFIG.initialCoins, cellsToFill);
 
-  for (let i = 0; i < cellsToFill; i += 1) {
-    board = fillRandomEmptyCell(board);
+  for (let i = 0; i < initialCoins; i += 1) {
+    const targetCell = pickRandomEmptyCell(board);
+
+    if (!targetCell) {
+      return board;
+    }
+
+    const nextBoard = board.map((row) => [...row]);
+    nextBoard[targetCell.r][targetCell.c] = createCoinCell();
+    board = nextBoard;
+  }
+
+  for (let i = initialCoins; i < cellsToFill; i += 1) {
+    board = fillRandomEmptyCell(board, build);
   }
 
   return board;
 }
 
-export function fillRandomEmptyCell(board: CellData[][]): CellData[][] {
+function createWarriorCell(build: PlayerBuildState, colorIdx: number): CellData {
+  const entry = getDeckEntry(build, colorIdx);
+
+  return {
+    type: 'warrior',
+    colorIdx,
+    tier: entry.tier,
+    state: 'ready',
+  };
+}
+
+export function fillRandomEmptyCell(board: CellData[][], build: PlayerBuildState): CellData[][] {
   const targetCell = pickRandomEmptyCell(board);
 
   if (!targetCell) {
     return board;
   }
 
-  return fillCell(board, targetCell);
+  return fillCell(board, targetCell, build);
 }
 
 export function pickRandomEmptyCell(board: CellData[][]): BoardCellPosition | null {
@@ -70,7 +103,7 @@ export function pickRandomEmptyCell(board: CellData[][]): BoardCellPosition | nu
   return emptyCells[Math.floor(Math.random() * emptyCells.length)];
 }
 
-export function fillCell(board: CellData[][], cell: BoardCellPosition): CellData[][] {
+export function fillCell(board: CellData[][], cell: BoardCellPosition, build: PlayerBuildState): CellData[][] {
   const nextBoard = board.map((row) => [...row]);
   const targetCell = nextBoard[cell.r]?.[cell.c];
 
@@ -78,7 +111,33 @@ export function fillCell(board: CellData[][], cell: BoardCellPosition): CellData
     return board;
   }
 
-  nextBoard[cell.r][cell.c] = generateCell();
+  nextBoard[cell.r][cell.c] = generateCell(build);
+
+  return nextBoard;
+}
+
+export function fillRandomEmptyCellsWithColor(board: CellData[][], build: PlayerBuildState, colorIdx: number, count: number): CellData[][] {
+  const nextBoard = board.map((row) => [...row]);
+  const emptyCells: BoardCellPosition[] = [];
+
+  nextBoard.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (cell.state === 'empty') {
+        emptyCells.push({ r, c });
+      }
+    });
+  });
+
+  for (let index = emptyCells.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [emptyCells[index], emptyCells[swapIndex]] = [emptyCells[swapIndex], emptyCells[index]];
+  }
+
+  const cellsToFill = Math.min(count, emptyCells.length);
+  for (let index = 0; index < cellsToFill; index += 1) {
+    const cell = emptyCells[index];
+    nextBoard[cell.r][cell.c] = createWarriorCell(build, colorIdx);
+  }
 
   return nextBoard;
 }
@@ -162,6 +221,7 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
       spawnedWarriors.push({
         col: c,
         colorIdx: cell.colorIdx ?? 0,
+        tier: cell.tier ?? 1,
       });
     }
 

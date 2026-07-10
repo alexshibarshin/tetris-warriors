@@ -4,6 +4,7 @@ export type CellState = 'empty' | 'ready';
 export type CellData = {
   type?: CellType;
   colorIdx?: number;
+  tier?: number;
   state: CellState;
 };
 
@@ -15,6 +16,7 @@ export type BoardCellPosition = {
 export type WarriorSpawnRequest = {
   col: number;
   colorIdx: number;
+  tier: number;
 };
 
 export type BlockDef = {

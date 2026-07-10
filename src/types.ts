@@ -1,3 +1,5 @@
+import type { StageTheme } from './game/stageTheme';
+
 export type Faction = 'player' | 'enemy';
 export type UnitClass = 'melee' | 'ranged';
 
@@ -5,13 +7,15 @@ export type Entity = {
   id: string;
   faction: Faction;
   unitClass: UnitClass;
-  colorIdx: number;
+  colorIdx: number | null;
+  tier: number;
   x: number;
   y: number;
   vx: number;
   vy: number;
   hp: number;
   maxHp: number;
+  damageMultiplier: number;
   targetId: string | null;
   attackTimer: number;
   attackVisualTimer: number;
@@ -32,7 +36,7 @@ export type Projectile = {
   targetId: string | 'enemy-structure';
   targetKind: 'entity' | 'enemyStructure';
   damage: number;
-  colorIdx: number;
+  colorIdx: number | null;
   faction: Faction;
 };
 
@@ -60,4 +64,13 @@ export type BattleState = {
   burstSpawnsRemaining: number;
   burstSpawnCooldownMs: number;
   status: 'playing' | 'victory' | 'defeat';
+  stageTheme: StageTheme;
+};
+
+export type BattleSnapshot = {
+  playerBaseHp: number;
+  playerBaseMaxHp: number;
+  enemyStructureHp: number;
+  enemyStructureMaxHp: number;
+  phase: number;
 };

@@ -2,11 +2,14 @@ import {
   BATTLE_CONFIG,
   BOARD_CONFIG,
   GENERATOR_CONFIG,
+  NEUTRAL_HEX_COLOR,
   SPAWN_PHASES,
   WARRIOR_COLORS,
   WARRIOR_HEX_COLORS,
 } from '../config';
-import { BattleState, DamageText, Entity, Projectile, UnitClass } from '../types';
+import { BattleState, DamageText, Entity, Projectile } from '../types';
+import { PlayerBuildState, getBuildCombatScale, getDeckEntry, getTierStatMultiplier } from './progression';
+import { StageTheme, createStageTheme, rollEnemyColor } from './stageTheme';
 import { WarriorSpawnRequest } from './types';
 
 export type BattleViewport = {
@@ -24,7 +27,7 @@ function createId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
-function createWaveState(): BattleState {
+function createWaveState(stageTheme: StageTheme): BattleState {
   return {
     entities: [],
     projectiles: [],
@@ -39,10 +42,11 @@ function createWaveState(): BattleState {
     burstSpawnsRemaining: 0,
     burstSpawnCooldownMs: 0,
     status: 'playing',
+    stageTheme,
   };
 }
 
-function getRandomUnitClass(): UnitClass {
+function getRandomUnitClass() {
   return Math.random() > BATTLE_CONFIG.unitClassChance ? 'melee' : 'ranged';
 }
 
@@ -65,6 +69,10 @@ function addDamageText(state: BattleState, x: number, y: number, text: string, c
   });
 }
 
+function getDamageColor(colorIdx: number | null) {
+  return colorIdx === null ? NEUTRAL_HEX_COLOR : (WARRIOR_HEX_COLORS[colorIdx] ?? '#ffffff');
+}
+
 function triggerAttackVisual(entity: Entity, targetX: number, targetY: number) {
   const dx = targetX - entity.x;
   const dy = targetY - entity.y;
@@ -84,24 +92,31 @@ function getPlayerWarriorIncomePerSec() {
   return (1000 / BOARD_CONFIG.respawnIntervalMs) * (1 - GENERATOR_CONFIG.coinChance);
 }
 
-function getAveragePlayerDamagePerHit() {
+function getBasePlayerCombatValue() {
   const averageBaseHit = (BATTLE_CONFIG.meleeDamage + BATTLE_CONFIG.rangedDamage) / 2;
-  const colorMultiplier = 1 / WARRIOR_COLORS.length + ((WARRIOR_COLORS.length - 1) / WARRIOR_COLORS.length) * BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
-  return averageBaseHit * colorMultiplier;
-}
-
-function getAverageEnemyDamagePerHit(damageMultiplier: number) {
-  const colorMultiplier = 1 / WARRIOR_COLORS.length + ((WARRIOR_COLORS.length - 1) / WARRIOR_COLORS.length) * BATTLE_CONFIG.enemyWrongColorDamageMultiplier;
-  return BATTLE_CONFIG.enemyDamage * damageMultiplier * colorMultiplier;
-}
-
-function getPlayerCombatValue() {
-  const dps = getAveragePlayerDamagePerHit() / (BATTLE_CONFIG.attackCooldownMs / 1000);
+  const colorMultiplier =
+    1 / WARRIOR_COLORS.length +
+    ((WARRIOR_COLORS.length - 1) / WARRIOR_COLORS.length) * BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
+  const dps = (averageBaseHit * colorMultiplier) / (BATTLE_CONFIG.attackCooldownMs / 1000);
   return BATTLE_CONFIG.warriorHp * dps;
 }
 
-function getEnemyCombatValue(phase: SpawnPhase) {
-  const dps = getAverageEnemyDamagePerHit(phase.damageMultiplier) / (BATTLE_CONFIG.attackCooldownMs / 1000);
+function getAverageEnemyDamagePerHit(damageMultiplier: number, neutralShare: number) {
+  const colorMultiplier =
+    neutralShare +
+    (1 - neutralShare) *
+      (1 / WARRIOR_COLORS.length +
+        ((WARRIOR_COLORS.length - 1) / WARRIOR_COLORS.length) * BATTLE_CONFIG.enemyWrongColorDamageMultiplier);
+
+  return BATTLE_CONFIG.enemyDamage * damageMultiplier * colorMultiplier;
+}
+
+function getPlayerCombatValue(build: PlayerBuildState) {
+  return getBasePlayerCombatValue() * getBuildCombatScale(build);
+}
+
+function getEnemyCombatValue(phase: SpawnPhase, neutralShare: number) {
+  const dps = getAverageEnemyDamagePerHit(phase.damageMultiplier, neutralShare) / (BATTLE_CONFIG.attackCooldownMs / 1000);
   return BATTLE_CONFIG.enemyHp * phase.hpMultiplier * dps;
 }
 
@@ -131,11 +146,14 @@ function spawnEnemyFromStructure(state: BattleState, viewport: BattleViewport) {
   const currentPhase = getCurrentSpawnPhase(state.phase);
   const structure = getEnemyStructurePosition(viewport);
   const hp = BATTLE_CONFIG.enemyHp * currentPhase.hpMultiplier;
+  const colorIdx = rollEnemyColor(state.stageTheme, state.phase);
+
   state.entities.push({
     id: createId(),
     faction: 'enemy',
     unitClass: getRandomUnitClass(),
-    colorIdx: Math.floor(Math.random() * WARRIOR_COLORS.length),
+    colorIdx,
+    tier: 1,
     x: Math.max(
       BATTLE_CONFIG.enemySpawnPaddingPx,
       Math.min(
@@ -148,6 +166,7 @@ function spawnEnemyFromStructure(state: BattleState, viewport: BattleViewport) {
     vy: 0,
     hp,
     maxHp: hp,
+    damageMultiplier: 1,
     targetId: null,
     attackTimer: 0,
     attackVisualTimer: 0,
@@ -182,23 +201,29 @@ function countUnitsNearPoint(
 }
 
 function getPackSize(phase: SpawnPhase, bonusUnits: number) {
-  return Math.max(
-    1,
-    randomInt(phase.packSizeMin, phase.packSizeMax) + bonusUnits,
-  );
+  return Math.max(1, randomInt(phase.packSizeMin, phase.packSizeMax) + bonusUnits);
 }
 
-function queueNextSpawnCooldown(state: BattleState, phase: SpawnPhase, pressureScale: number) {
+function queueNextSpawnCooldown(
+  state: BattleState,
+  phase: SpawnPhase,
+  pressureScale: number,
+  build: PlayerBuildState,
+) {
+  const neutralShare =
+    BATTLE_CONFIG.neutralEnemySharesByPhase[state.phase] ??
+    BATTLE_CONFIG.neutralEnemySharesByPhase[BATTLE_CONFIG.neutralEnemySharesByPhase.length - 1];
+
   const playerIncomePerSec = getPlayerWarriorIncomePerSec() * BATTLE_CONFIG.playerSpawnRealizationRate;
   const targetBudgetPerSec = playerIncomePerSec * phase.pressureBudget;
-  const enemyPowerRatio = Math.max(0.2, getEnemyCombatValue(phase) / getPlayerCombatValue());
+  const enemyPowerRatio = Math.max(0.2, getEnemyCombatValue(phase, neutralShare) / getPlayerCombatValue(build));
   const targetUnitsPerSec = targetBudgetPerSec / enemyPowerRatio;
   const averagePackSize = (phase.packSizeMin + phase.packSizeMax) / 2;
   const averageCooldownMs = (averagePackSize / Math.max(0.08, targetUnitsPerSec)) * 1000;
   const variance = BATTLE_CONFIG.spawnCooldownVariance;
   const minCooldown = averageCooldownMs * (1 - variance);
   const maxCooldown = averageCooldownMs * (1 + variance);
-  state.enemySpawnCooldownMs = Math.max(650, randomRange(minCooldown, maxCooldown) * pressureScale);
+  state.enemySpawnCooldownMs = Math.max(800, randomRange(minCooldown, maxCooldown) * pressureScale);
 }
 
 function triggerSpawnPack(state: BattleState, viewport: BattleViewport, packSize: number) {
@@ -215,14 +240,17 @@ function maybeStartBurst(state: BattleState, phase: SpawnPhase, bonusBursts: num
     return;
   }
 
-  state.burstSpawnsRemaining = Math.max(
-    0,
-    randomInt(phase.burstCountMin, phase.burstCountMax) - 1,
-  );
+  state.burstSpawnsRemaining = Math.max(0, randomInt(phase.burstCountMin, phase.burstCountMax) - 1);
   state.burstSpawnCooldownMs = randomRange(phase.burstIntervalMinMs, phase.burstIntervalMaxMs);
 }
 
-function updateWaveFlow(state: BattleState, _time: number, lastEnemySpawnAt: number, viewport: BattleViewport, dt: number) {
+function updateWaveFlow(
+  state: BattleState,
+  lastEnemySpawnAt: number,
+  viewport: BattleViewport,
+  dt: number,
+  build: PlayerBuildState,
+) {
   if (state.startDelayTimer > 0) {
     return { lastEnemySpawnAt, outcome: undefined as BattleStepResult['outcome'] };
   }
@@ -249,26 +277,28 @@ function updateWaveFlow(state: BattleState, _time: number, lastEnemySpawnAt: num
     BATTLE_CONFIG.enemyPressureRadiusPx,
   );
 
-  const emergencyDefense = playerPressure >= 6 && enemyScreen <= 2;
+  const buildScale = getBuildCombatScale(build);
+  const emergencyDefense = phaseIndex >= 2 && playerPressure >= 7 && enemyScreen <= 2;
   const pressureFactor = Math.max(
-    0.84,
+    0.88,
     Math.min(
-      1.12,
-      1 - playerCount * 0.008 - playerPressure * 0.012 + enemyCount * 0.008,
+      1.24,
+      1 -
+        playerCount * 0.005 -
+        playerPressure * 0.007 -
+        Math.min(0.08, (buildScale - 1) * 0.05) +
+        enemyCount * 0.012,
     ),
   );
 
   if (state.burstSpawnsRemaining > 0) {
     state.burstSpawnCooldownMs -= dt * 1000;
     if (state.burstSpawnCooldownMs <= 0) {
-      const bonusUnits = 0;
+      const bonusUnits = phaseIndex >= 3 && buildScale >= 2.1 ? 1 : 0;
       triggerSpawnPack(state, viewport, getPackSize(currentPhase, bonusUnits));
       state.burstSpawnsRemaining -= 1;
       if (state.burstSpawnsRemaining > 0) {
-        state.burstSpawnCooldownMs = randomRange(
-          currentPhase.burstIntervalMinMs,
-          currentPhase.burstIntervalMaxMs,
-        );
+        state.burstSpawnCooldownMs = randomRange(currentPhase.burstIntervalMinMs, currentPhase.burstIntervalMaxMs);
       }
       return {
         lastEnemySpawnAt,
@@ -279,10 +309,10 @@ function updateWaveFlow(state: BattleState, _time: number, lastEnemySpawnAt: num
 
   state.enemySpawnCooldownMs -= dt * 1000;
   if (state.enemySpawnCooldownMs <= 0) {
-    const bonusUnits = 0;
+    const bonusUnits = emergencyDefense ? 1 : phaseIndex >= 2 && buildScale >= 1.8 ? 1 : 0;
     triggerSpawnPack(state, viewport, getPackSize(currentPhase, bonusUnits));
-    maybeStartBurst(state, currentPhase, 0);
-    queueNextSpawnCooldown(state, currentPhase, pressureFactor);
+    maybeStartBurst(state, currentPhase, phaseIndex >= 3 && buildScale >= 2.2 ? 1 : 0);
+    queueNextSpawnCooldown(state, currentPhase, pressureFactor, build);
     return {
       lastEnemySpawnAt,
       outcome: undefined as BattleStepResult['outcome'],
@@ -339,17 +369,25 @@ function findClosestEnemyForPlayer(entity: Entity, entities: Entity[]) {
   return { bestTarget, minDistance };
 }
 
+function isColorCounterApplicable(attacker: Entity, target: Entity | null) {
+  return target && attacker.colorIdx !== null && target.colorIdx !== null && attacker.colorIdx !== target.colorIdx;
+}
+
 function computeHitDamage(attacker: Entity, target: Entity | null, phaseIndex: number, isStructureTarget = false) {
-  let damage = attacker.unitClass === 'melee' ? BATTLE_CONFIG.meleeDamage : BATTLE_CONFIG.rangedDamage;
+  let damage =
+    attacker.unitClass === 'melee' ? BATTLE_CONFIG.meleeDamage : BATTLE_CONFIG.rangedDamage;
 
   if (attacker.faction === 'enemy') {
     const currentPhase = getCurrentSpawnPhase(phaseIndex);
     damage = BATTLE_CONFIG.enemyDamage * currentPhase.damageMultiplier;
-    if (target && attacker.colorIdx !== target.colorIdx) {
+    if (isColorCounterApplicable(attacker, target)) {
       damage *= BATTLE_CONFIG.enemyWrongColorDamageMultiplier;
     }
-  } else if (target && attacker.colorIdx !== target.colorIdx) {
-    damage *= BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
+  } else {
+    damage *= attacker.damageMultiplier;
+    if (isColorCounterApplicable(attacker, target)) {
+      damage *= BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
+    }
   }
 
   if (isStructureTarget) {
@@ -365,7 +403,7 @@ function pushProjectile(
   target: { x: number; y: number; id: string | 'enemy-structure'; kind: 'entity' | 'enemyStructure' },
   damage: number,
 ) {
-  const length = Math.sqrt((target.x - attacker.x) ** 2 + (target.y - attacker.y) ** 2);
+  const length = Math.sqrt((target.x - attacker.x) ** 2 + (target.y - attacker.y) ** 2) || 1;
   state.projectiles.push({
     id: Math.random().toString(36),
     x: attacker.x,
@@ -445,7 +483,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
               bestTarget.x,
               bestTarget.y - BATTLE_CONFIG.damageTextYOffsetPx,
               damage.toString(),
-              WARRIOR_HEX_COLORS[entity.colorIdx],
+              getDamageColor(entity.colorIdx),
             );
           } else {
             pushProjectile(state, entity, { x: bestTarget.x, y: bestTarget.y, id: bestTarget.id, kind: 'entity' }, damage);
@@ -475,7 +513,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
               structure.x,
               structure.y + 28,
               damage.toString(),
-              WARRIOR_HEX_COLORS[entity.colorIdx],
+              getDamageColor(entity.colorIdx),
             );
           } else {
             pushProjectile(
@@ -590,12 +628,14 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
             faction: 'enemy',
             unitClass: 'ranged',
             colorIdx: target.colorIdx,
+            tier: 1,
             x: structure.x,
             y: structure.y + 10,
             vx: 0,
             vy: 0,
             hp: 1,
             maxHp: 1,
+            damageMultiplier: 1,
             targetId: null,
             attackTimer: 0,
             attackVisualTimer: 0,
@@ -612,9 +652,10 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
 }
 
 function stepProjectiles(state: BattleState, dt: number, viewport: BattleViewport) {
+  const structurePosition = getEnemyStructurePosition(viewport);
   const structureTarget = {
-    ...getEnemyStructurePosition(viewport),
-    y: getEnemyStructurePosition(viewport).y + 8,
+    ...structurePosition,
+    y: structurePosition.y + 8,
   };
 
   for (let index = state.projectiles.length - 1; index >= 0; index -= 1) {
@@ -636,7 +677,7 @@ function stepProjectiles(state: BattleState, dt: number, viewport: BattleViewpor
           structureTarget.x,
           structureTarget.y + 20,
           projectile.damage.toString(),
-          WARRIOR_HEX_COLORS[projectile.colorIdx],
+          getDamageColor(projectile.colorIdx),
         );
         state.projectiles.splice(index, 1);
       }
@@ -652,19 +693,14 @@ function stepProjectiles(state: BattleState, dt: number, viewport: BattleViewpor
           target.x,
           target.y - BATTLE_CONFIG.damageTextYOffsetPx,
           projectile.damage.toString(),
-          WARRIOR_HEX_COLORS[projectile.colorIdx],
+          getDamageColor(projectile.colorIdx),
         );
         state.projectiles.splice(index, 1);
       }
       continue;
     }
 
-    if (
-      projectile.x < 0 ||
-      projectile.x > viewport.width ||
-      projectile.y < 0 ||
-      projectile.y > viewport.height
-    ) {
+    if (projectile.x < 0 || projectile.x > viewport.width || projectile.y < 0 || projectile.y > viewport.height) {
       state.projectiles.splice(index, 1);
     }
   }
@@ -693,8 +729,15 @@ function cleanupState(state: BattleState) {
   }
 }
 
-export function createBattleState() {
-  return createWaveState();
+export function createBattleState(stageTheme: StageTheme = createStageTheme()) {
+  return createWaveState(stageTheme);
+}
+
+export function healPlayerBase(state: BattleState, fraction: number) {
+  state.playerBaseHp = Math.min(
+    BATTLE_CONFIG.playerBaseMaxHealth,
+    state.playerBaseHp + BATTLE_CONFIG.playerBaseMaxHealth * fraction,
+  );
 }
 
 export function spawnPlayerWarriors(
@@ -702,33 +745,43 @@ export function spawnPlayerWarriors(
   warriors: WarriorSpawnRequest[],
   boardCols: number,
   viewport: BattleViewport,
+  build: PlayerBuildState,
 ) {
   const cellWidth = viewport.width / boardCols;
 
-  const newEntities: Entity[] = warriors.map((warrior) => ({
-    id: createId(),
-    faction: 'player',
-    unitClass: getRandomUnitClass(),
-    colorIdx: warrior.colorIdx,
-    x:
-      warrior.col * cellWidth +
-      cellWidth / 2 +
-      (Math.random() * BATTLE_CONFIG.spawnJitterPx - BATTLE_CONFIG.spawnJitterHalfRangePx),
-    y:
-      viewport.height -
-      BATTLE_CONFIG.playerSpawnYOffsetPx +
-      (Math.random() * BATTLE_CONFIG.spawnJitterPx - BATTLE_CONFIG.spawnJitterHalfRangePx),
-    vx: 0,
-    vy: 0,
-    hp: BATTLE_CONFIG.warriorHp,
-    maxHp: BATTLE_CONFIG.warriorHp,
-    targetId: null,
-    attackTimer: 0,
-    attackVisualTimer: 0,
-    attackVisualDurationMs: BATTLE_CONFIG.attackVisualDurationMs,
-    attackVisualDx: 0,
-    attackVisualDy: -1,
-  }));
+  const newEntities: Entity[] = warriors.map((warrior) => {
+    const deckEntry = getDeckEntry(build, warrior.colorIdx);
+    const tier = warrior.tier ?? deckEntry.tier;
+    const statMultiplier = getTierStatMultiplier(tier);
+    const hp = BATTLE_CONFIG.warriorHp * statMultiplier;
+
+    return {
+      id: createId(),
+      faction: 'player',
+      unitClass: deckEntry.unitClass,
+      colorIdx: warrior.colorIdx,
+      tier,
+      x:
+        warrior.col * cellWidth +
+        cellWidth / 2 +
+        (Math.random() * BATTLE_CONFIG.spawnJitterPx - BATTLE_CONFIG.spawnJitterHalfRangePx),
+      y:
+        viewport.height -
+        BATTLE_CONFIG.playerSpawnYOffsetPx +
+        (Math.random() * BATTLE_CONFIG.spawnJitterPx - BATTLE_CONFIG.spawnJitterHalfRangePx),
+      vx: 0,
+      vy: 0,
+      hp,
+      maxHp: hp,
+      damageMultiplier: statMultiplier,
+      targetId: null,
+      attackTimer: 0,
+      attackVisualTimer: 0,
+      attackVisualDurationMs: BATTLE_CONFIG.attackVisualDurationMs,
+      attackVisualDx: 0,
+      attackVisualDy: -1,
+    };
+  });
 
   state.entities.push(...newEntities);
 }
@@ -736,11 +789,11 @@ export function spawnPlayerWarriors(
 export function stepBattleState(params: {
   state: BattleState;
   dt: number;
-  time: number;
   viewport: BattleViewport;
   lastEnemySpawnAt: number;
+  build: PlayerBuildState;
 }): { lastEnemySpawnAt: number; result: BattleStepResult } {
-  const { state, dt, time, viewport, lastEnemySpawnAt } = params;
+  const { state, dt, viewport, lastEnemySpawnAt, build } = params;
 
   if (state.status !== 'playing') {
     return { lastEnemySpawnAt, result: {} };
@@ -762,7 +815,7 @@ export function stepBattleState(params: {
     state.battleTimeSec += dt;
   }
 
-  const waveFlow = updateWaveFlow(state, time, lastEnemySpawnAt, viewport, dt);
+  const waveFlow = updateWaveFlow(state, lastEnemySpawnAt, viewport, dt, build);
   stepEntities(state, dt, viewport);
   stepProjectiles(state, dt, viewport);
   stepDamageTexts(state, dt);

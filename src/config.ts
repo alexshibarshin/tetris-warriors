@@ -5,7 +5,8 @@ export const GAME_CONFIG = {
     maxWidthPx: 320,
     dragPreviewExpandFactor: 0.5,
     initialFilledCells: 8,
-    respawnIntervalMs: 3000,
+    initialCoins: 2,
+    respawnIntervalMs: 5000,
     activationFlashMs: 250,
   },
   generator: {
@@ -13,7 +14,7 @@ export const GAME_CONFIG = {
     idleScale: 0.6,
     stageCount: 4,
     tetrominoRotationCount: 4,
-    coinChance: 0.2,
+    coinChance: 0.25,
     previewGrabInsetPx: 10,
     slotWidthPx: 40,
     slotHeightPx: 20,
@@ -21,9 +22,10 @@ export const GAME_CONFIG = {
     stageDurationsMs: [3000, 2500, 2200, 2000],
   },
   battle: {
+    gameplayHeightPx: 420,
     playerBaseMaxHealth: 1000,
     enemyStructureMaxHealth: 1000,
-    initialWaveDelaySec: 4,
+    initialWaveDelaySec: 5,
 
     aggroRangeX: 160,
     aggroRangeY: 400,
@@ -69,7 +71,7 @@ export const GAME_CONFIG = {
     emergencySpawnRangePx: 170,
     enemyPressureRadiusPx: 210,
     playerPressureRadiusPx: 240,
-    playerSpawnRealizationRate: 0.72,
+    playerSpawnRealizationRate: 0.62,
     spawnCooldownVariance: 0.12,
 
     idleMoveSpeedMultiplier: 0.4,
@@ -91,13 +93,37 @@ export const GAME_CONFIG = {
     entityCleanupAboveTopPx: 100,
 
     unitClassChance: 0.5,
+    challengeStageDualColorChance: 0.42,
+    neutralEnemySharesByPhase: [0.54, 0.46, 0.38, 0.3, 0.2],
+    challengePrimaryColorShare: 0.72,
+  },
+  progression: {
+    upgradeCostCoins: 1,
+    maxTier: 4,
+    tierStatBonusPerLevel: 0.5,
+    tierUpgradeSpawnWeightMultiplier: 1.2,
+    wallHealFraction: 0.25,
+    wallHealOfferMinMissingFraction: 0.15,
+    rarityOfferWeights: {
+      rare: 7,
+      epic: 6,
+      legendary: 5,
+    },
+    summonWarriorsCardCount: 3,
+    playerDeck: [
+      { colorIdx: 0, name: 'Red', unitClass: 'melee' },
+      { colorIdx: 1, name: 'Blue', unitClass: 'ranged' },
+      { colorIdx: 2, name: 'Green', unitClass: 'melee' },
+      { colorIdx: 3, name: 'Yellow', unitClass: 'ranged' },
+      { colorIdx: 4, name: 'Purple', unitClass: 'melee' },
+    ],
   },
   spawnPhases: [
     {
       startAtSec: 0,
       pressureBudget: 0.4,
-      hpMultiplier: 0.46,
-      damageMultiplier: 0.36,
+      hpMultiplier: 0.54,
+      damageMultiplier: 0.4,
       packSizeMin: 1,
       packSizeMax: 2,
       burstChance: 0.0,
@@ -107,53 +133,53 @@ export const GAME_CONFIG = {
       burstIntervalMaxMs: 460,
     },
     {
-      startAtSec: 20,
-      pressureBudget: 0.42,
-      hpMultiplier: 0.52,
-      damageMultiplier: 0.42,
+      startAtSec: 25,
+      pressureBudget: 0.46,
+      hpMultiplier: 0.6,
+      damageMultiplier: 0.44,
       packSizeMin: 1,
-      packSizeMax: 3,
+      packSizeMax: 2,
       burstChance: 0.0,
-      burstCountMin: 2,
+      burstCountMin: 1,
       burstCountMax: 3,
       burstIntervalMinMs: 300,
       burstIntervalMaxMs: 430,
     },
     {
-      startAtSec: 40,
-      pressureBudget: 0.45,
-      hpMultiplier: 0.6,
-      damageMultiplier: 0.48,
+      startAtSec: 50,
+      pressureBudget: 0.6,
+      hpMultiplier: 0.72,
+      damageMultiplier: 0.52,
       packSizeMin: 1,
       packSizeMax: 3,
       burstChance: 0.0,
-      burstCountMin: 2,
+      burstCountMin: 1,
       burstCountMax: 3,
       burstIntervalMinMs: 280,
       burstIntervalMaxMs: 390,
     },
     {
-      startAtSec: 60,
-      pressureBudget: 0.48,
-      hpMultiplier: 0.75,
-      damageMultiplier: 0.54,
+      startAtSec: 80,
+      pressureBudget: 0.7,
+      hpMultiplier: 0.85,
+      damageMultiplier: 0.6,
       packSizeMin: 2,
       packSizeMax: 3,
       burstChance: 0.0,
-      burstCountMin: 2,
+      burstCountMin: 1,
       burstCountMax: 4,
       burstIntervalMinMs: 250,
       burstIntervalMaxMs: 360,
     },
     {
-      startAtSec: 90,
-      pressureBudget: 0.5,
-      hpMultiplier: 0.9,
-      damageMultiplier: 0.6,
+      startAtSec: 110,
+      pressureBudget: 0.75,
+      hpMultiplier: 1.0,
+      damageMultiplier: 0.7,
       packSizeMin: 2,
       packSizeMax: 4,
       burstChance: 0.0,
-      burstCountMin: 3,
+      burstCountMin: 1,
       burstCountMax: 4,
       burstIntervalMinMs: 230,
       burstIntervalMaxMs: 340,
@@ -181,13 +207,18 @@ export const GAME_CONFIG = {
       '#f59e0b',
       '#a855f7'
     ],
+    warriorNames: ['Red', 'Blue', 'Green', 'Yellow', 'Purple'],
+    neutralHex: '#9ca3af',
   },
 } as const;
 
 export const BOARD_CONFIG = GAME_CONFIG.board;
 export const GENERATOR_CONFIG = GAME_CONFIG.generator;
 export const BATTLE_CONFIG = GAME_CONFIG.battle;
+export const PROGRESSION_CONFIG = GAME_CONFIG.progression;
 export const SPAWN_PHASES = GAME_CONFIG.spawnPhases;
 export const WARRIOR_COLORS = GAME_CONFIG.colors.warriorBg;
 export const WARRIOR_TEXT_COLORS = GAME_CONFIG.colors.warriorText;
 export const WARRIOR_HEX_COLORS = GAME_CONFIG.colors.warriorHex;
+export const WARRIOR_COLOR_NAMES = GAME_CONFIG.colors.warriorNames;
+export const NEUTRAL_HEX_COLOR = GAME_CONFIG.colors.neutralHex;
