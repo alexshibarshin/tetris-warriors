@@ -89,7 +89,7 @@ function getCurrentSpawnPhase(phaseIndex: number) {
 }
 
 function getPlayerWarriorIncomePerSec() {
-  return (1000 / BOARD_CONFIG.respawnIntervalMs) * (1 - GENERATOR_CONFIG.coinChance);
+  return (1000 / BOARD_CONFIG.respawnIntervalMs) * (1 - GENERATOR_CONFIG.coinTargetShare);
 }
 
 function getBasePlayerCombatValue() {

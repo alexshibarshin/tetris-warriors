@@ -11,8 +11,57 @@ import {
 } from './types';
 import { getDeckEntry, pickWeightedDeckColor, PlayerBuildState } from './progression';
 
-export function generateCell(build: PlayerBuildState): CellData {
-  const isCoin = Math.random() < GENERATOR_CONFIG.coinChance;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Uses the live board composition as feedback, rather than making every spawn
+ * an independent coin roll. This prevents unlucky warrior-only streaks while
+ * preserving uncertainty when the coin share is already on target.
+ */
+export function getCoinSpawnChance(board: CellData[][]): number {
+  let objectCount = 0;
+  let coinCount = 0;
+
+  board.forEach((row) => {
+    row.forEach((cell) => {
+      if (cell.state === 'empty') {
+        return;
+      }
+
+      objectCount += 1;
+      if (cell.type === 'coin') {
+        coinCount += 1;
+      }
+    });
+  });
+
+  if (objectCount === 0) {
+    return GENERATOR_CONFIG.coinTargetShare;
+  }
+
+  const coinShare = coinCount / objectCount;
+  const correctedChance = clamp(
+    GENERATOR_CONFIG.coinTargetShare +
+      (GENERATOR_CONFIG.coinTargetShare - coinShare) * GENERATOR_CONFIG.coinCorrectionStrength,
+    0,
+    1,
+  );
+
+  if (coinShare < GENERATOR_CONFIG.coinMinShare) {
+    return Math.max(GENERATOR_CONFIG.coinRecoveryChance, correctedChance);
+  }
+
+  if (coinShare > GENERATOR_CONFIG.coinMaxShare) {
+    return Math.min(GENERATOR_CONFIG.coinSurplusChance, correctedChance);
+  }
+
+  return correctedChance;
+}
+
+export function generateCell(board: CellData[][], build: PlayerBuildState): CellData {
+  const isCoin = Math.random() < getCoinSpawnChance(board);
 
   if (isCoin) {
     return createCoinCell();
@@ -135,7 +184,7 @@ export function fillCell(board: CellData[][], cell: BoardCellPosition, build: Pl
     return board;
   }
 
-  nextBoard[cell.r][cell.c] = generateCell(build);
+  nextBoard[cell.r][cell.c] = generateCell(board, build);
 
   return nextBoard;
 }
