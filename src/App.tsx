@@ -10,6 +10,7 @@ import {
 } from './config';
 import { BattleArea, BattleAreaRef } from './components/BattleArea';
 import { WarriorVisual } from './components/WarriorVisual';
+import { BoosterActivationEffect, BoosterVisual } from './components/BoosterVisual';
 import { DEFAULT_GAME_DESIGN } from './game/design';
 import { evaluatePlacementPreview } from './game/board';
 import {
@@ -136,6 +137,13 @@ function getUpgradeCopy(card: UpgradeCard, playerBuild: ReturnType<typeof create
     };
   }
 
+  if (card.type === 'spawnBooster') {
+    return {
+      title: 'Arcane cache',
+      description: `Spawn ${card.boosterCount} random booster`,
+    };
+  }
+
   return {
     title: 'Gate heal',
     description: `Restore ${Math.round(card.healFraction * 100)}% HP`,
@@ -153,6 +161,7 @@ export default function App() {
   const [dragState, setDragState] = useState<DragState>('idle');
   const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
   const [activatedCells, setActivatedCells] = useState<BoardCellPosition[]>([]);
+  const [activatedBoosters, setActivatedBoosters] = useState<ReturnType<typeof DEFAULT_GAME_DESIGN.board.applyShapeToBoard>['activatedBoosters']>([]);
   const [coins, setCoins] = useState(0);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [battleSnapshot, setBattleSnapshot] = useState<BattleSnapshot>({
@@ -278,6 +287,7 @@ export default function App() {
     setUpgradeChoices(null);
     setUpgradeRerollAvailable(false);
     setActivatedCells([]);
+    setActivatedBoosters([]);
     setNextSpawnCell(null);
     setNextSpawnProgress(0);
     setNextSpawnStartedAt(null);
@@ -306,6 +316,7 @@ export default function App() {
 
       if (activationResult.activatedCells.length > 0) {
         setActivatedCells(activationResult.activatedCells);
+        setActivatedBoosters(activationResult.activatedBoosters);
         setCoins((currentCoins) => currentCoins + activationResult.earnedCoins);
 
         if (activationResult.spawnedWarriors.length > 0) {
@@ -320,6 +331,10 @@ export default function App() {
       setTimeout(() => {
         setActivatedCells([]);
       }, BOARD_CONFIG.activationFlashMs);
+
+      setTimeout(() => {
+        setActivatedBoosters([]);
+      }, 800);
       return;
     }
 
@@ -390,6 +405,15 @@ export default function App() {
       return;
     }
 
+    if (card.type === 'spawnBooster') {
+      setBoard((currentBoard) =>
+        DEFAULT_GAME_DESIGN.board.fillRandomEmptyCellsWithBoosters(currentBoard, card.boosterCount),
+      );
+      setUpgradeChoices(null);
+      setUpgradeRerollAvailable(false);
+      return;
+    }
+
     const nextBuild = applyUpgradeCard(playerBuild, card);
     setPlayerBuild(nextBuild);
 
@@ -412,6 +436,9 @@ export default function App() {
 
   const isNextSpawnCell = (r: number, c: number) =>
     nextSpawnCell?.r === r && nextSpawnCell?.c === c;
+
+  const getActivatedBooster = (r: number, c: number) =>
+    activatedBoosters.find((booster) => booster.position.r === r && booster.position.c === c);
 
   const renderPiece = () => {
     if (generatorStage === 0 || !shape || !cellSize || !generatorRect) {
@@ -544,6 +571,7 @@ export default function App() {
               row.map((cell, c) => {
                 const isHighlighted = isCellHighlighted(r, c);
                 const isActivated = isCellActivated(r, c);
+                const activatedBooster = getActivatedBooster(r, c);
                 const checker = (r + c) % 2 === 0 ? 'bg-neutral-800' : 'bg-neutral-700';
 
                 return (
@@ -565,6 +593,12 @@ export default function App() {
                     {cell.state === 'ready' && cell.type === 'coin' && (
                       <div className="absolute inset-1.5 rounded-full bg-yellow-400 border-[3px] border-yellow-600 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.3)]">
                         <span className="text-yellow-800 font-bold text-lg leading-none -mt-0.5">¢</span>
+                      </div>
+                    )}
+
+                    {cell.state === 'ready' && cell.type === 'booster' && cell.boosterType && (
+                      <div className="absolute inset-1 z-10 pointer-events-none">
+                        <BoosterVisual type={cell.boosterType} />
                       </div>
                     )}
 
@@ -592,7 +626,13 @@ export default function App() {
                     )}
 
                     {isHighlighted && <div className="absolute inset-0 bg-white/40 ring-2 ring-inset ring-white z-10" />}
-                    {isActivated && <div className="absolute inset-0 bg-white animate-pulse z-20" />}
+                    {isActivated && <div className="absolute inset-0 bg-white animate-pulse z-20 pointer-events-none" />}
+                    {activatedBooster && (
+                      <BoosterActivationEffect
+                        type={activatedBooster.type}
+                        chromaColorIndices={activatedBooster.chromaColorIndices}
+                      />
+                    )}
                   </div>
                 );
               }),
@@ -689,7 +729,7 @@ export default function App() {
                             className={`relative min-w-0 min-h-[180px] overflow-hidden rounded-[26px] border px-3 py-3 text-left transition active:scale-[0.99] ${CARD_RARITY_STYLES[card.rarity]}`}
                           >
                             <div className="absolute inset-0 opacity-75 pointer-events-none">
-                              {card.type !== 'wallHeal' && (
+                              {(card.type === 'tier' || card.type === 'summonWarriors') && (
                                 <div className={`absolute -right-6 top-5 h-24 w-24 rounded-full blur-2xl ${WARRIOR_COLORS[card.colorIdx]}`} />
                               )}
                               {card.rarity === 'legendary' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_55%)]" />}
@@ -705,6 +745,10 @@ export default function App() {
                                   {card.type === 'wallHeal' ? (
                                     <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-amber-200/30 bg-amber-300/20 text-xl text-amber-200 shadow-[0_8px_20px_rgba(0,0,0,0.24)]">
                                       ⛨
+                                    </div>
+                                  ) : card.type === 'spawnBooster' ? (
+                                    <div className="h-12 w-12">
+                                      <BoosterVisual type="chroma" />
                                     </div>
                                   ) : (
                                     <div className="relative h-12 w-12">

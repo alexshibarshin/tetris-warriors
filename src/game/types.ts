@@ -1,10 +1,12 @@
-export type CellType = 'warrior' | 'coin';
+export type BoosterType = 'cross' | 'bomb' | 'chroma';
+export type CellType = 'warrior' | 'coin' | 'booster';
 export type CellState = 'empty' | 'ready';
 
 export type CellData = {
   type?: CellType;
   colorIdx?: number;
   tier?: number;
+  boosterType?: BoosterType;
   state: CellState;
 };
 
@@ -53,4 +55,9 @@ export type BoardActivationResult = {
   activatedCells: BoardCellPosition[];
   earnedCoins: number;
   spawnedWarriors: WarriorSpawnRequest[];
+  activatedBoosters: Array<{
+    position: BoardCellPosition;
+    type: BoosterType;
+    chromaColorIndices: number[];
+  }>;
 };

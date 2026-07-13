@@ -8,6 +8,7 @@ export const GAME_CONFIG = {
     initialCoins: 2,
     respawnIntervalMs: 5000,
     activationFlashMs: 250,
+    boosterChance: 0.08,
   },
   generator: {
     dragOffsetPx: -80,
@@ -110,6 +111,7 @@ export const GAME_CONFIG = {
       legendary: 5,
     },
     summonWarriorsCardCount: 3,
+    boosterCardSpawnCount: 1,
     playerDeck: [
       { colorIdx: 0, name: 'Red', unitClass: 'melee' },
       { colorIdx: 1, name: 'Blue', unitClass: 'ranged' },

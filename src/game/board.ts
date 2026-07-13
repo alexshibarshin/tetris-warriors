@@ -2,6 +2,7 @@ import { BOARD_CONFIG, GENERATOR_CONFIG } from '../config';
 import {
   BoardActivationResult,
   BoardCellPosition,
+  BoosterType,
   CellData,
   DragState,
   PlacementPreview,
@@ -15,6 +16,10 @@ export function generateCell(build: PlayerBuildState): CellData {
 
   if (isCoin) {
     return createCoinCell();
+  }
+
+  if (Math.random() < BOARD_CONFIG.boosterChance) {
+    return createRandomBoosterCell();
   }
 
   const colorIdx = pickWeightedDeckColor(build);
@@ -34,6 +39,16 @@ export function createEmptyCell(): CellData {
 
 function createCoinCell(): CellData {
   return { type: 'coin', state: 'ready' };
+}
+
+const BOOSTER_TYPES: BoosterType[] = ['cross', 'bomb', 'chroma'];
+
+export function createRandomBoosterCell(): CellData {
+  return {
+    type: 'booster',
+    boosterType: BOOSTER_TYPES[Math.floor(Math.random() * BOOSTER_TYPES.length)],
+    state: 'ready',
+  };
 }
 
 export function createInitialBoard(build: PlayerBuildState): CellData[][] {
@@ -164,6 +179,30 @@ export function fillRandomEmptyCellsWithColor(board: CellData[][], build: Player
   return nextBoard;
 }
 
+export function fillRandomEmptyCellsWithBoosters(board: CellData[][], count: number): CellData[][] {
+  const nextBoard = board.map((row) => [...row]);
+  const emptyCells: BoardCellPosition[] = [];
+
+  nextBoard.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (cell.state === 'empty') {
+        emptyCells.push({ r, c });
+      }
+    });
+  });
+
+  for (let index = emptyCells.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [emptyCells[index], emptyCells[swapIndex]] = [emptyCells[swapIndex], emptyCells[index]];
+  }
+
+  for (const cell of emptyCells.slice(0, Math.min(count, emptyCells.length))) {
+    nextBoard[cell.r][cell.c] = createRandomBoosterCell();
+  }
+
+  return nextBoard;
+}
+
 export function evaluatePlacementPreview(params: {
   dragState: DragState;
   shape: ShapeDef | null;
@@ -227,9 +266,28 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
   const nextBoard = board.map((row) => [...row]);
   const activatedCells: BoardCellPosition[] = [];
   const spawnedWarriors: BoardActivationResult['spawnedWarriors'] = [];
+  const activatedBoosters: BoardActivationResult['activatedBoosters'] = [];
   let earnedCoins = 0;
 
-  for (const { r, c } of coveredCells) {
+  const chromaColorIndices = [...new Set(
+    coveredCells
+      .map(({ r, c }) => board[r]?.[c])
+      .filter((cell): cell is CellData & { type: 'warrior'; colorIdx: number } => cell?.state === 'ready' && cell.type === 'warrior' && cell.colorIdx !== undefined)
+      .map((cell) => cell.colorIdx),
+  )];
+  const pendingCells = [...coveredCells];
+  const queuedCells = new Set(pendingCells.map(({ r, c }) => `${r}:${c}`));
+
+  const queueCell = (r: number, c: number) => {
+    const key = `${r}:${c}`;
+    if (nextBoard[r]?.[c]?.state === 'ready' && !queuedCells.has(key)) {
+      queuedCells.add(key);
+      pendingCells.push({ r, c });
+    }
+  };
+
+  for (let index = 0; index < pendingCells.length; index += 1) {
+    const { r, c } = pendingCells[index];
     const cell = nextBoard[r]?.[c];
     if (!cell || cell.state !== 'ready') {
       continue;
@@ -239,12 +297,39 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
 
     if (cell.type === 'coin') {
       earnedCoins += 1;
-    } else {
+    } else if (cell.type === 'warrior') {
       spawnedWarriors.push({
         col: c,
         colorIdx: cell.colorIdx ?? 0,
         tier: cell.tier ?? 1,
       });
+    } else if (cell.type === 'booster' && cell.boosterType) {
+      activatedBoosters.push({
+        position: { r, c },
+        type: cell.boosterType,
+        chromaColorIndices,
+      });
+
+      if (cell.boosterType === 'cross') {
+        for (let column = 0; column < BOARD_CONFIG.cols; column += 1) queueCell(r, column);
+        for (let row = 0; row < BOARD_CONFIG.rows; row += 1) queueCell(row, c);
+      }
+
+      if (cell.boosterType === 'bomb') {
+        for (let row = r - 2; row <= r + 2; row += 1) {
+          for (let column = c - 2; column <= c + 2; column += 1) {
+            if (Math.hypot(row - r, column - c) <= 2) queueCell(row, column);
+          }
+        }
+      }
+
+      if (cell.boosterType === 'chroma') {
+        nextBoard.forEach((row, rowIndex) => row.forEach((candidate, columnIndex) => {
+          if (candidate.state === 'ready' && candidate.type === 'warrior' && chromaColorIndices.includes(candidate.colorIdx ?? -1)) {
+            queueCell(rowIndex, columnIndex);
+          }
+        }));
+      }
     }
 
     nextBoard[r][c] = createEmptyCell();
@@ -255,5 +340,6 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
     activatedCells,
     earnedCoins,
     spawnedWarriors,
+    activatedBoosters,
   };
 }

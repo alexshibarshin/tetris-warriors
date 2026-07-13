@@ -32,6 +32,15 @@ export type UpgradeCard =
       title: string;
       description: string;
       offerWeight: number;
+    }
+  | {
+      id: string;
+      type: 'spawnBooster';
+      rarity: UpgradeRarity;
+      boosterCount: number;
+      title: string;
+      description: string;
+      offerWeight: number;
     };
 
 export type PlayerDeckEntry = {
@@ -193,6 +202,16 @@ export function generateUpgradeChoices(build: PlayerBuildState, context: Upgrade
     });
   }
 
+  cards.push({
+    id: 'spawn-booster',
+    type: 'spawnBooster',
+    rarity: 'epic',
+    boosterCount: PROGRESSION_CONFIG.boosterCardSpawnCount,
+    title: 'Arcane Cache',
+    description: `Place ${PROGRESSION_CONFIG.boosterCardSpawnCount} random booster on an empty board cell.`,
+    offerWeight: getOfferWeightForRarity('epic') * 0.6,
+  });
+
   const pool = shuffleInPlace([...cards]);
   const chosen: UpgradeCard[] = [];
 
@@ -213,7 +232,7 @@ export function generateUpgradeChoices(build: PlayerBuildState, context: Upgrade
 }
 
 export function applyUpgradeCard(build: PlayerBuildState, card: UpgradeCard) {
-  if (card.type === 'wallHeal' || card.type === 'summonWarriors') {
+  if (card.type === 'wallHeal' || card.type === 'summonWarriors' || card.type === 'spawnBooster') {
     return build;
   }
 
