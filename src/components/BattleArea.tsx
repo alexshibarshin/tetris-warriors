@@ -259,7 +259,9 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
                 <div className="mt-1 text-[10px] font-black tracking-[0.35em] text-red-200/85">
                   ENEMY PORTAL
                 </div>
-                <div className="text-[9px] font-bold tracking-[0.16em] text-orange-200/80">BLAST {portalDamage}</div>
+                <div className="text-[9px] font-bold tracking-[0.12em] text-orange-200/80">
+                  {props.stageTheme.portalEffect.icon} {props.stageTheme.portalEffect.name.toUpperCase()}
+                </div>
               </div>
             </div>
 
@@ -277,11 +279,18 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
               >
                 {entity.faction === 'player' ? (
                   <div className="relative w-full h-full mb-1">
-                    <WarriorVisual colorIdx={entity.colorIdx ?? 0} tier={entity.tier} className="w-full h-full drop-shadow-md" />
+                    <WarriorVisual warriorId={entity.warriorId} colorIdx={entity.colorIdx ?? 0} tier={entity.tier} className="w-full h-full drop-shadow-md" />
                     <TierStars tier={entity.tier} />
+                    {entity.shield > 0 && <div className="absolute inset-0 rounded-full border-2 border-violet-300/80 bg-violet-300/10 shadow-[0_0_12px_rgba(196,181,253,.7)]" />}
                   </div>
                 ) : (
-                  <EnemyVisual colorIdx={entity.colorIdx} className="w-full h-full mb-1 drop-shadow-md" />
+                  <div className="relative w-full h-full mb-1">
+                    <EnemyVisual colorIdx={entity.colorIdx} theme={props.stageTheme.enemyTheme.id} signature={entity.enemyKind === 'signature'} className="w-full h-full drop-shadow-md" />
+                    {entity.warded && <div className="absolute inset-0 rounded-full border-2 border-cyan-200 bg-cyan-300/15 shadow-[0_0_14px_rgba(103,232,249,.8)]" />}
+                    {entity.poisonStacks > 0 && <div className="absolute -left-1 top-1 rounded-full bg-green-500 px-1 text-[8px] font-black text-black">{entity.poisonStacks}</div>}
+                    {entity.frozenTimer > 0 && <div className="absolute -right-1 top-1 text-sm drop-shadow-md">❄</div>}
+                    {entity.armor > 0 && <div className="absolute -left-1 bottom-2 text-xs drop-shadow-md">⬟</div>}
+                  </div>
                 )}
 
                 <div className="absolute -right-1 top-2 w-4 h-4 rounded-full border border-black/50 flex items-center justify-center text-[10px] bg-white/20 text-white font-bold drop-shadow-sm">
@@ -294,7 +303,35 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
                     style={{ width: `${(entity.hp / entity.maxHp) * 100}%` }}
                   />
                 </div>
+                {entity.shield > 0 && (
+                  <div className="absolute -bottom-4 w-8 h-1 bg-violet-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-violet-300" style={{ width: `${Math.min(100, entity.shield / Math.max(1, entity.maxShield) * 100)}%` }} />
+                  </div>
+                )}
               </div>
+            ))}
+
+            {state.effects.map((effect) => (
+              <div
+                key={effect.id}
+                className={`absolute rounded-full border-4 pointer-events-none ${
+                  effect.kind === 'heal' ? 'border-emerald-300 bg-emerald-400/15' :
+                  effect.kind === 'ward' ? 'border-cyan-200 bg-cyan-300/10' :
+                  effect.kind === 'explosion' ? 'border-orange-300 bg-red-500/30' :
+                  effect.kind === 'freeze' ? 'border-sky-200 bg-sky-300/20' :
+                  effect.kind === 'lightning' ? 'border-yellow-200 bg-yellow-300/30' :
+                  effect.kind === 'taunt' ? 'border-violet-300 bg-violet-400/15' :
+                  'border-white/70 bg-white/10'
+                }`}
+                style={{
+                  left: effect.x - effect.radius,
+                  top: effect.y - effect.radius,
+                  width: effect.radius * 2,
+                  height: effect.radius * 2,
+                  opacity: effect.life / effect.maxLife,
+                  transform: `scale(${1.2 - effect.life / effect.maxLife * 0.2})`,
+                }}
+              />
             ))}
 
             {state.projectiles.map((projectile) => (

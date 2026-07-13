@@ -11,7 +11,7 @@ export const GAME_CONFIG = {
     boosterChance: 0.08,
   },
   generator: {
-    dragOffsetPx: -80,
+    dragOffsetPx: -50,
     idleScale: 0.6,
     stageCount: 4,
     tetrominoRotationCount: 4,
@@ -30,7 +30,11 @@ export const GAME_CONFIG = {
   battle: {
     gameplayHeightPx: 450,
     playerBaseMaxHealth: 1000,
-    enemyStructureMaxHealth: 1000,
+    // The portal needs to survive long enough for the late perk tiers to matter.
+    // This is deliberately lower than a full 7/5 scaling: later waves also add
+    // pressure, so the average victory moves by roughly a minute rather than
+    // turning every run into an endurance test.
+    enemyStructureMaxHealth: 1450,
     initialWaveDelaySec: 5,
 
     aggroRangeX: 160,
@@ -45,7 +49,7 @@ export const GAME_CONFIG = {
     enemyDamage: 6,
     playerBaseDamage: 8,
     structureDamage: 15,
-    structureDamageMultipliersByPhase: [1, 1.15, 1.3, 1.45, 1.65],
+    structureDamageMultipliersByPhase: [0.95, 1.05, 1.15, 1.3, 1.45, 1.6, 1.8],
 
     warriorHp: 36,
     enemyHp: 32,
@@ -102,12 +106,12 @@ export const GAME_CONFIG = {
 
     unitClassChance: 0.5,
     challengeStageDualColorChance: 0.42,
-    neutralEnemySharesByPhase: [0.54, 0.46, 0.38, 0.3, 0.2],
+    neutralEnemySharesByPhase: [0.54, 0.46, 0.38, 0.3, 0.24, 0.18, 0.14],
     challengePrimaryColorShare: 0.72,
   },
   progression: {
     maxTier: 4,
-    tierStatBonusPerLevel: 0.5,
+    tierStatBonusPerLevel: 0.25,
     tierUpgradeSpawnWeightMultiplier: 1.1,
     wallHealFraction: 0.25,
     wallHealOfferMinMissingFraction: 0.15,
@@ -129,42 +133,61 @@ export const GAME_CONFIG = {
   spawnPhases: [
     {
       startAtSec: 0,
-      pressureBudget: 0.4,
-      hpMultiplier: 0.54,
-      damageMultiplier: 0.4,
-      packSizeMin: 1,
-      packSizeMax: 2,
-    },
-    {
-      startAtSec: 25,
-      pressureBudget: 0.46,
+      spawnIntervalSec: 12,
       hpMultiplier: 0.6,
-      damageMultiplier: 0.44,
-      packSizeMin: 1,
-      packSizeMax: 2,
-    },
-    {
-      startAtSec: 50,
-      pressureBudget: 0.6,
-      hpMultiplier: 0.72,
-      damageMultiplier: 0.52,
-      packSizeMin: 1,
+      damageMultiplier: 0.45,
+      packSizeMin: 2,
       packSizeMax: 3,
     },
     {
-      startAtSec: 75,
-      pressureBudget: 0.75,
-      hpMultiplier: 0.85,
+      startAtSec: 25,
+      spawnIntervalSec: 11,
+      hpMultiplier: 0.7,
+      damageMultiplier: 0.52,
+      packSizeMin: 2,
+      packSizeMax: 3,
+    },
+    {
+      startAtSec: 50,
+      spawnIntervalSec: 10,
+      hpMultiplier: 0.82,
       damageMultiplier: 0.6,
       packSizeMin: 2,
       packSizeMax: 4,
     },
     {
-      startAtSec: 110,
-      pressureBudget: 0.85,
-      hpMultiplier: 1.0,
+      startAtSec: 75,
+      spawnIntervalSec: 9,
+      hpMultiplier: 0.96,
       damageMultiplier: 0.7,
       packSizeMin: 3,
+      packSizeMax: 4,
+    },
+    {
+      startAtSec: 110,
+      // Phase 5 begins the late game, but is still a bridge to the climax.
+      spawnIntervalSec: 10,
+      hpMultiplier: 1.05,
+      damageMultiplier: 0.75,
+      packSizeMin: 3,
+      packSizeMax: 4,
+    },
+    {
+      // Act 6: builds should now have access to their defining perk synergies.
+      startAtSec: 145,
+      spawnIntervalSec: 9,
+      hpMultiplier: 1.18,
+      damageMultiplier: 0.86,
+      packSizeMin: 3,
+      packSizeMax: 5,
+    },
+    {
+      // Act 7 is a compact climax, not another long plateau.
+      startAtSec: 180,
+      spawnIntervalSec: 8,
+      hpMultiplier: 1.34,
+      damageMultiplier: 1.0,
+      packSizeMin: 4,
       packSizeMax: 5,
     },
   ],

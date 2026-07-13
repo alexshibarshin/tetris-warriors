@@ -5,6 +5,7 @@ export type CellState = 'empty' | 'ready';
 export type CellData = {
   type?: CellType;
   colorIdx?: number;
+  warriorId?: import('./content').WarriorId;
   tier?: number;
   boosterType?: BoosterType;
   state: CellState;
@@ -18,6 +19,7 @@ export type BoardCellPosition = {
 export type WarriorSpawnRequest = {
   col: number;
   colorIdx: number;
+  warriorId?: import('./content').WarriorId;
   tier: number;
 };
 
@@ -48,6 +50,12 @@ export type PlacementPreview = {
   snappedC: number;
   snappedR: number;
   coveredCells: BoardCellPosition[];
+};
+
+export type PlacementMatchBonus = {
+  kind: 'good' | 'perfect';
+  label: 'GOOD MATCH!' | 'PERFECT MATCH!';
+  generatedCells: 1 | 2;
 };
 
 export type BoardActivationResult = {

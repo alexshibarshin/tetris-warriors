@@ -5,6 +5,7 @@ import {
   BoosterType,
   CellData,
   DragState,
+  PlacementMatchBonus,
   PlacementPreview,
   PointerPosition,
   ShapeDef,
@@ -77,6 +78,7 @@ export function generateCell(board: CellData[][], build: PlayerBuildState): Cell
   return {
     type: 'warrior',
     colorIdx,
+    warriorId: entry.warriorId,
     tier: entry.tier,
     state: 'ready',
   };
@@ -138,6 +140,7 @@ function createWarriorCell(build: PlayerBuildState, colorIdx: number): CellData 
   return {
     type: 'warrior',
     colorIdx,
+    warriorId: entry.warriorId,
     tier: entry.tier,
     state: 'ready',
   };
@@ -350,6 +353,7 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
       spawnedWarriors.push({
         col: c,
         colorIdx: cell.colorIdx ?? 0,
+        warriorId: cell.warriorId,
         tier: cell.tier ?? 1,
       });
     } else if (cell.type === 'booster' && cell.boosterType) {
@@ -391,4 +395,19 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
     spawnedWarriors,
     activatedBoosters,
   };
+}
+
+export function getPlacementMatchBonus(
+  board: CellData[][],
+  coveredCells: BoardCellPosition[],
+): PlacementMatchBonus | null {
+  const cellCount = coveredCells.length;
+  if (cellCount !== 3 && cellCount !== 4) return null;
+
+  const isFullMatch = coveredCells.every(({ r, c }) => board[r]?.[c]?.state === 'ready');
+  if (!isFullMatch) return null;
+
+  return cellCount === 4
+    ? { kind: 'perfect', label: 'PERFECT MATCH!', generatedCells: 2 }
+    : { kind: 'good', label: 'GOOD MATCH!', generatedCells: 1 };
 }

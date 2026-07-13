@@ -1,29 +1,27 @@
 import React from 'react';
 import { WARRIOR_TEXT_COLORS } from '../config';
+import { EnemyThemeId } from '../game/stageTheme';
 
-export function EnemyVisual({ colorIdx, className = '' }: { colorIdx: number | null, className?: string }) {
+export function EnemyVisual({ colorIdx, theme = 'horde', signature = false, className = '' }: {
+  colorIdx: number | null; theme?: EnemyThemeId; signature?: boolean; className?: string;
+}) {
   const textColor = colorIdx === null ? 'text-gray-400' : (WARRIOR_TEXT_COLORS[colorIdx] || 'text-gray-500');
-  const eyeColor = colorIdx === null ? '#e5e7eb' : '#ef4444';
+  const eye = signature ? '#fde047' : '#ef4444';
+  const scale = signature ? 'scale-110' : '';
   return (
-    <div className={`flex items-center justify-center ${textColor} ${className}`}>
-      <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_4px_5px_rgba(0,0,0,0.7)] overflow-visible">
-        <g stroke="rgba(0,0,0,0.6)" strokeWidth="4" strokeLinejoin="miter">
-          {/* Spiky Body */}
-          <path d="M 50,30 L 90,60 L 75,105 L 25,105 L 10,60 Z" fill="currentColor" />
-          
-          {/* Darker inner detail to make it look armored/monstrous */}
-          <path d="M 50,45 L 75,65 L 65,95 L 35,95 L 25,65 Z" fill="rgba(0,0,0,0.3)" stroke="none" />
-          
-          {/* Head */}
-          <polygon points="50,5 75,25 65,50 35,50 25,25" fill="#333" />
-          
-          {/* Eyes (glowing red) */}
-          <circle cx="40" cy="30" r="4" fill={eyeColor} stroke="none" />
-          <circle cx="60" cy="30" r="4" fill={eyeColor} stroke="none" />
-          
-          {/* Horns */}
-          <path d="M 30,18 L 15,5 L 25,25" fill="none" stroke="#222" strokeWidth="4" strokeLinecap="round" />
-          <path d="M 70,18 L 85,5 L 75,25" fill="none" stroke="#222" strokeWidth="4" strokeLinecap="round" />
+    <div className={`flex items-center justify-center ${textColor} ${scale} ${className}`}>
+      <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_4px_5px_rgba(0,0,0,.7)] overflow-visible">
+        <g stroke="rgba(0,0,0,.65)" strokeWidth="4" strokeLinejoin="round">
+          <path d={theme === 'rush' ? 'M50 22 91 72 66 108 34 108 9 72Z' : 'M50 28 90 60 75 105 25 105 10 60Z'} fill="currentColor" />
+          {theme === 'armor' && <path d="M18 56 31 38h38l13 18-10 44H28Z" fill="#64748b" opacity=".8" />}
+          {theme === 'regen' && <path d="M50 46c24 0 27 38 0 55-27-17-24-55 0-55Z" fill="#22c55e" opacity=".5" />}
+          {theme === 'backline' && signature && <path d="M72 27v70M72 27Q94 61 72 96" fill="none" stroke="#fca5a5" strokeWidth="6" />}
+          {theme === 'elite' && <path d="M18 55 7 35 29 44M82 55l11-20-22 9" fill="#a3a3a3" />}
+          {theme === 'horde' && <path d="m22 58-16 7 16 8M78 58l16 7-16 8" fill="#d4d4d4" />}
+          <polygon points="50,7 76,27 65,51 35,51 24,27" fill={signature ? '#171717' : '#333'} />
+          <circle cx="40" cy="31" r="4" fill={eye} stroke="none" />
+          <circle cx="60" cy="31" r="4" fill={eye} stroke="none" />
+          {signature && <path d="M31 18 18 3 27 28M69 18 82 3 73 28" fill="none" stroke="#fbbf24" strokeWidth="5" />}
         </g>
       </svg>
     </div>
