@@ -28,7 +28,7 @@ export const GAME_CONFIG = {
     stageDurationsMs: [3000, 2500, 2200, 2000],
   },
   battle: {
-    gameplayHeightPx: 420,
+    gameplayHeightPx: 450,
     playerBaseMaxHealth: 1000,
     enemyStructureMaxHealth: 1000,
     initialWaveDelaySec: 5,
@@ -38,7 +38,7 @@ export const GAME_CONFIG = {
 
     meleeRange: 35,
     rangedRange: 160,
-    structureAttackRange: 180,
+    structureAttackRange: 170,
 
     meleeDamage: 15,
     rangedDamage: 10,
@@ -64,8 +64,8 @@ export const GAME_CONFIG = {
     separationRadius: 25,
     separationForce: 60,
 
-    warriorWrongColorDamageMultiplier: 0.7,
-    enemyWrongColorDamageMultiplier: 1.3,
+    warriorWrongColorDamageMultiplier: 0.65,
+    enemyWrongColorDamageMultiplier: 1.0,
 
     playerSpawnYOffsetPx: 28,
     enemySpawnYOffsetPx: 128,
@@ -80,6 +80,7 @@ export const GAME_CONFIG = {
     playerPressureRadiusPx: 240,
     playerSpawnRealizationRate: 0.62,
     spawnCooldownVariance: 0.12,
+    emergencyDefenseCooldownMultiplier: 0.8,
 
     idleMoveSpeedMultiplier: 0.4,
     idleRetargetMinSec: 1,
@@ -133,11 +134,6 @@ export const GAME_CONFIG = {
       damageMultiplier: 0.4,
       packSizeMin: 1,
       packSizeMax: 2,
-      burstChance: 0.0,
-      burstCountMin: 2,
-      burstCountMax: 2,
-      burstIntervalMinMs: 320,
-      burstIntervalMaxMs: 460,
     },
     {
       startAtSec: 25,
@@ -146,11 +142,6 @@ export const GAME_CONFIG = {
       damageMultiplier: 0.44,
       packSizeMin: 1,
       packSizeMax: 2,
-      burstChance: 0.0,
-      burstCountMin: 1,
-      burstCountMax: 3,
-      burstIntervalMinMs: 300,
-      burstIntervalMaxMs: 430,
     },
     {
       startAtSec: 50,
@@ -159,11 +150,6 @@ export const GAME_CONFIG = {
       damageMultiplier: 0.52,
       packSizeMin: 1,
       packSizeMax: 3,
-      burstChance: 0.0,
-      burstCountMin: 1,
-      burstCountMax: 3,
-      burstIntervalMinMs: 280,
-      burstIntervalMaxMs: 390,
     },
     {
       startAtSec: 75,
@@ -172,24 +158,14 @@ export const GAME_CONFIG = {
       damageMultiplier: 0.6,
       packSizeMin: 2,
       packSizeMax: 4,
-      burstChance: 0.0,
-      burstCountMin: 1,
-      burstCountMax: 4,
-      burstIntervalMinMs: 250,
-      burstIntervalMaxMs: 360,
     },
     {
       startAtSec: 110,
       pressureBudget: 0.85,
       hpMultiplier: 1.0,
       damageMultiplier: 0.7,
-      packSizeMin: 2,
+      packSizeMin: 3,
       packSizeMax: 5,
-      burstChance: 0.0,
-      burstCountMin: 1,
-      burstCountMax: 4,
-      burstIntervalMinMs: 230,
-      burstIntervalMaxMs: 340,
     },
   ],
   colors: {

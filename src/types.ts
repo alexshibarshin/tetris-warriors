@@ -61,8 +61,6 @@ export type BattleState = {
   startDelayTimer: number;
   enemyStructureAttackTimer: number;
   enemySpawnCooldownMs: number;
-  burstSpawnsRemaining: number;
-  burstSpawnCooldownMs: number;
   status: 'playing' | 'victory' | 'defeat';
   stageTheme: StageTheme;
 };

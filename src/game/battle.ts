@@ -39,8 +39,6 @@ function createWaveState(stageTheme: StageTheme): BattleState {
     startDelayTimer: BATTLE_CONFIG.initialWaveDelaySec,
     enemyStructureAttackTimer: 0,
     enemySpawnCooldownMs: 900,
-    burstSpawnsRemaining: 0,
-    burstSpawnCooldownMs: 0,
     status: 'playing',
     stageTheme,
   };
@@ -208,8 +206,8 @@ function countUnitsNearPoint(
   return count;
 }
 
-function getPackSize(phase: SpawnPhase, bonusUnits: number) {
-  return Math.max(1, randomInt(phase.packSizeMin, phase.packSizeMax) + bonusUnits);
+function getPackSize(phase: SpawnPhase) {
+  return randomInt(phase.packSizeMin, phase.packSizeMax);
 }
 
 function queueNextSpawnCooldown(
@@ -238,18 +236,6 @@ function triggerSpawnPack(state: BattleState, viewport: BattleViewport, packSize
   for (let index = 0; index < packSize; index += 1) {
     spawnEnemyFromStructure(state, viewport);
   }
-}
-
-function maybeStartBurst(state: BattleState, phase: SpawnPhase, bonusBursts: number) {
-  const burstChance = Math.min(0.9, phase.burstChance + bonusBursts * 0.08);
-  if (Math.random() > burstChance) {
-    state.burstSpawnsRemaining = 0;
-    state.burstSpawnCooldownMs = 0;
-    return;
-  }
-
-  state.burstSpawnsRemaining = Math.max(0, randomInt(phase.burstCountMin, phase.burstCountMax) - 1);
-  state.burstSpawnCooldownMs = randomRange(phase.burstIntervalMinMs, phase.burstIntervalMaxMs);
 }
 
 function updateWaveFlow(
@@ -299,28 +285,15 @@ function updateWaveFlow(
     ),
   );
 
-  if (state.burstSpawnsRemaining > 0) {
-    state.burstSpawnCooldownMs -= dt * 1000;
-    if (state.burstSpawnCooldownMs <= 0) {
-      const bonusUnits = phaseIndex >= 3 && buildScale >= 2.1 ? 1 : 0;
-      triggerSpawnPack(state, viewport, getPackSize(currentPhase, bonusUnits));
-      state.burstSpawnsRemaining -= 1;
-      if (state.burstSpawnsRemaining > 0) {
-        state.burstSpawnCooldownMs = randomRange(currentPhase.burstIntervalMinMs, currentPhase.burstIntervalMaxMs);
-      }
-      return {
-        lastEnemySpawnAt,
-        outcome: undefined as BattleStepResult['outcome'],
-      };
-    }
-  }
-
   state.enemySpawnCooldownMs -= dt * 1000;
   if (state.enemySpawnCooldownMs <= 0) {
-    const bonusUnits = emergencyDefense ? 1 : phaseIndex >= 2 && buildScale >= 1.8 ? 1 : 0;
-    triggerSpawnPack(state, viewport, getPackSize(currentPhase, bonusUnits));
-    maybeStartBurst(state, currentPhase, phaseIndex >= 3 && buildScale >= 2.2 ? 1 : 0);
-    queueNextSpawnCooldown(state, currentPhase, pressureFactor, build);
+    triggerSpawnPack(state, viewport, getPackSize(currentPhase));
+    queueNextSpawnCooldown(
+      state,
+      currentPhase,
+      pressureFactor * (emergencyDefense ? BATTLE_CONFIG.emergencyDefenseCooldownMultiplier : 1),
+      build,
+    );
     return {
       lastEnemySpawnAt,
       outcome: undefined as BattleStepResult['outcome'],
