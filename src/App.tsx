@@ -173,6 +173,7 @@ export default function App() {
   });
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeCard[] | null>(null);
   const [upgradeRerollAvailable, setUpgradeRerollAvailable] = useState(false);
+  const [pendingUpgradeDrafts, setPendingUpgradeDrafts] = useState(0);
   const [boardRect, setBoardRect] = useState<DOMRect | null>(null);
   const [generatorRect, setGeneratorRect] = useState<DOMRect | null>(null);
   const [nextSpawnCell, setNextSpawnCell] = useState<BoardCellPosition | null>(null);
@@ -286,6 +287,7 @@ export default function App() {
     setDragState('idle');
     setUpgradeChoices(null);
     setUpgradeRerollAvailable(false);
+    setPendingUpgradeDrafts(0);
     setActivatedCells([]);
     setActivatedBoosters([]);
     setNextSpawnCell(null);
@@ -318,6 +320,7 @@ export default function App() {
         setActivatedCells(activationResult.activatedCells);
         setActivatedBoosters(activationResult.activatedBoosters);
         setCoins((currentCoins) => currentCoins + activationResult.earnedCoins);
+        setPendingUpgradeDrafts((currentDrafts) => currentDrafts + activationResult.earnedCoins);
 
         if (activationResult.spawnedWarriors.length > 0) {
           battleAreaRef.current?.spawnWarriors(activationResult.spawnedWarriors, BOARD_CONFIG.cols, playerBuild);
@@ -341,8 +344,8 @@ export default function App() {
     setDragState('idle');
   };
 
-  const openUpgradeDraft = () => {
-    if (coins < PROGRESSION_CONFIG.upgradeCostCoins || gameStatus !== 'playing' || isUpgradeOpen) {
+  useEffect(() => {
+    if (pendingUpgradeDrafts === 0 || gameStatus !== 'playing' || isUpgradeOpen) {
       return;
     }
 
@@ -355,11 +358,10 @@ export default function App() {
       return;
     }
 
-    setCoins((currentCoins) => currentCoins - PROGRESSION_CONFIG.upgradeCostCoins);
     setUpgradeChoices(choices);
     setUpgradeRerollAvailable(true);
     setDragState('idle');
-  };
+  }, [battleSnapshot, gameStatus, isUpgradeOpen, pendingUpgradeDrafts, playerBuild]);
 
   const rerollUpgradeDraft = () => {
     if (!upgradeRerollAvailable || gameStatus !== 'playing' || !isUpgradeOpen) {
@@ -386,8 +388,7 @@ export default function App() {
         ...current,
         playerBaseHp: Math.min(current.playerBaseMaxHp, current.playerBaseHp + current.playerBaseMaxHp * card.healFraction),
       }));
-      setUpgradeChoices(null);
-      setUpgradeRerollAvailable(false);
+      closeUpgradeDraft();
       return;
     }
 
@@ -400,8 +401,7 @@ export default function App() {
           card.summonCount,
         ),
       );
-      setUpgradeChoices(null);
-      setUpgradeRerollAvailable(false);
+      closeUpgradeDraft();
       return;
     }
 
@@ -409,8 +409,7 @@ export default function App() {
       setBoard((currentBoard) =>
         DEFAULT_GAME_DESIGN.board.fillRandomEmptyCellsWithBoosters(currentBoard, card.boosterCount),
       );
-      setUpgradeChoices(null);
-      setUpgradeRerollAvailable(false);
+      closeUpgradeDraft();
       return;
     }
 
@@ -421,8 +420,13 @@ export default function App() {
       setBoard((currentBoard) => applyTierUpgradeToBoard(currentBoard, nextBuild, card.colorIdx));
     }
 
+    closeUpgradeDraft();
+  };
+
+  const closeUpgradeDraft = () => {
     setUpgradeChoices(null);
     setUpgradeRerollAvailable(false);
+    setPendingUpgradeDrafts((currentDrafts) => Math.max(0, currentDrafts - 1));
   };
 
   const isCellHighlighted = (r: number, c: number) =>
@@ -641,7 +645,7 @@ export default function App() {
 
           <div className="w-full max-w-[360px] mt-2 h-[96px] relative">
             <div
-              className="absolute inset-y-0 left-0 w-1/3 flex items-center justify-end pr-3"
+              className="absolute inset-y-0 left-0 w-1/2 flex items-center justify-end pr-8"
             >
               <TimerProgress
                 stage={generatorStage}
@@ -651,7 +655,7 @@ export default function App() {
               />
             </div>
 
-            <div className="absolute inset-y-0 left-1/3 w-1/3 flex items-center justify-center">
+            <div className="absolute inset-y-0 left-1/2 w-1/2 flex items-center justify-start pl-8">
               <div
                 ref={generatorRef}
                 className="shrink-0 bg-neutral-800 rounded-xl border-2 border-neutral-700 shadow-inner flex items-center justify-center relative"
@@ -661,20 +665,6 @@ export default function App() {
                   GENERATOR
                 </span>
               </div>
-            </div>
-
-            <div className="absolute inset-y-0 right-0 w-1/3 flex items-center justify-center">
-              <button
-                onClick={openUpgradeDraft}
-                disabled={gameStatus !== 'playing' || isUpgradeOpen || coins < PROGRESSION_CONFIG.upgradeCostCoins}
-                className="h-[92px] w-[92px] rounded-2xl border border-amber-300/40 bg-gradient-to-b from-amber-300 to-orange-500 px-2 py-2 text-center text-black shadow-[0_10px_30px_rgba(245,158,11,0.35)] transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.98]"
-              >
-                <div className="text-[9px] font-black tracking-[0.24em]">UPGRADE</div>
-                <div className="mt-2 text-sm font-bold leading-tight">
-                  <div>{PROGRESSION_CONFIG.upgradeCostCoins}</div>
-                  <div>COINS</div>
-                </div>
-              </button>
             </div>
           </div>
         </div>

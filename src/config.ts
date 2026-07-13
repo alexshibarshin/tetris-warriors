@@ -99,7 +99,6 @@ export const GAME_CONFIG = {
     challengePrimaryColorShare: 0.72,
   },
   progression: {
-    upgradeCostCoins: 1,
     maxTier: 4,
     tierStatBonusPerLevel: 0.5,
     tierUpgradeSpawnWeightMultiplier: 1.1,
