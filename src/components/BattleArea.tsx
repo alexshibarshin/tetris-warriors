@@ -184,6 +184,10 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
 
   const playerBaseHpPct = Math.max(0, state.playerBaseHp / BATTLE_CONFIG.playerBaseMaxHealth) * 100;
   const enemyStructureHpPct = Math.max(0, state.enemyStructureHp / BATTLE_CONFIG.enemyStructureMaxHealth) * 100;
+  const portalPhaseMultiplier =
+    BATTLE_CONFIG.structureDamageMultipliersByPhase[state.phase] ??
+    BATTLE_CONFIG.structureDamageMultipliersByPhase[BATTLE_CONFIG.structureDamageMultipliersByPhase.length - 1];
+  const portalDamage = Math.round(BATTLE_CONFIG.structureDamage * portalPhaseMultiplier);
   const battleLayout = getBattleLayout(containerSize.width, containerSize.height);
   const enemyStructureLeft = `${BATTLE_CONFIG.enemyStructureXRatio * 100}%`;
   const phaseNumber = Math.min(state.phase + 1, SPAWN_PHASES.length);
@@ -255,6 +259,7 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
                 <div className="mt-1 text-[10px] font-black tracking-[0.35em] text-red-200/85">
                   ENEMY PORTAL
                 </div>
+                <div className="text-[9px] font-bold tracking-[0.16em] text-orange-200/80">BLAST {portalDamage}</div>
               </div>
             </div>
 

@@ -88,6 +88,14 @@ function getCurrentSpawnPhase(phaseIndex: number) {
   return SPAWN_PHASES[phaseIndex] ?? SPAWN_PHASES[SPAWN_PHASES.length - 1];
 }
 
+function getStructureDamage(state: BattleState) {
+  const phaseMultiplier =
+    BATTLE_CONFIG.structureDamageMultipliersByPhase[state.phase] ??
+    BATTLE_CONFIG.structureDamageMultipliersByPhase[BATTLE_CONFIG.structureDamageMultipliersByPhase.length - 1];
+
+  return Math.round(BATTLE_CONFIG.structureDamage * phaseMultiplier);
+}
+
 function getPlayerWarriorIncomePerSec() {
   return (1000 / BOARD_CONFIG.respawnIntervalMs) * (1 - GENERATOR_CONFIG.coinTargetShare);
 }
@@ -644,7 +652,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
             attackVisualDy: 1,
           },
           { x: target.x, y: target.y, id: target.id, kind: 'entity' },
-          BATTLE_CONFIG.structureDamage,
+          getStructureDamage(state),
         );
       }
     }

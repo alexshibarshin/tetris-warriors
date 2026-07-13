@@ -45,6 +45,7 @@ export const GAME_CONFIG = {
     enemyDamage: 6,
     playerBaseDamage: 8,
     structureDamage: 15,
+    structureDamageMultipliersByPhase: [1, 1.15, 1.3, 1.45, 1.65],
 
     warriorHp: 36,
     enemyHp: 32,
