@@ -108,6 +108,8 @@ export type BattleState = {
   enemySpawnCooldownMs: number;
   waveIndex: number;
   phaseWaveIndex: number;
+  playerBasePulseCount: number;
+  enemyWavesSuppressed: boolean;
   status: 'playing' | 'victory' | 'defeat';
   stageTheme: StageTheme;
 };

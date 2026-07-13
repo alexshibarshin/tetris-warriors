@@ -58,26 +58,26 @@ export function getWavePressureProfile(pattern: SpawnPatternId, phaseWaveIndex: 
   if (pattern === 'surge') {
     const isSurge = phaseWaveIndex % 3 === 2;
     return isSurge
-      ? { intervalMultiplier: 1.18, packMultiplier: 1.65, hpMultiplier: 1.12, damageMultiplier: 1.08, signatureChanceBonus: 0.14 }
-      : { intervalMultiplier: 0.76, packMultiplier: 0.82, hpMultiplier: 0.92, damageMultiplier: 0.92, signatureChanceBonus: -0.02 };
+      ? { intervalMultiplier: 1.18, packMultiplier: 1.38, hpMultiplier: 1.1, damageMultiplier: 1.08, signatureChanceBonus: 0.08 }
+      : { intervalMultiplier: 0.82, packMultiplier: 0.84, hpMultiplier: 0.92, damageMultiplier: 0.92, signatureChanceBonus: -0.01 };
   }
   if (pattern === 'heavy') {
-    return { intervalMultiplier: 1.35, packMultiplier: 0.7, hpMultiplier: 1.55, damageMultiplier: 1.25, signatureChanceBonus: 0.16 };
+    return { intervalMultiplier: 1.25, packMultiplier: 0.74, hpMultiplier: 1.6, damageMultiplier: 1.42, signatureChanceBonus: 0.08 };
   }
   if (pattern === 'alternating') {
     const isDangerWave = phaseWaveIndex % 2 === 1;
     return isDangerWave
-      ? { intervalMultiplier: 1.12, packMultiplier: 1.38, hpMultiplier: 1.34, damageMultiplier: 1.22, signatureChanceBonus: 0.22 }
-      : { intervalMultiplier: 0.78, packMultiplier: 0.78, hpMultiplier: 0.86, damageMultiplier: 0.88, signatureChanceBonus: -0.04 };
+      ? { intervalMultiplier: 1.15, packMultiplier: 1.15, hpMultiplier: 1.16, damageMultiplier: 1.12, signatureChanceBonus: 0.12 }
+      : { intervalMultiplier: 0.82, packMultiplier: 0.82, hpMultiplier: 0.92, damageMultiplier: 0.92, signatureChanceBonus: -0.02 };
   }
 
-  const ramp = Math.min(0.42, phaseWaveIndex * 0.07);
+  const ramp = Math.min(0.3, phaseWaveIndex * 0.06);
   return {
-    intervalMultiplier: 1 - ramp * 0.28,
-    packMultiplier: 0.82 + ramp,
-    hpMultiplier: 0.9 + ramp,
-    damageMultiplier: 0.92 + ramp * 0.55,
-    signatureChanceBonus: ramp * 0.45 - 0.04,
+    intervalMultiplier: 1 - ramp * 0.18,
+    packMultiplier: 0.88 + ramp * 0.45,
+    hpMultiplier: 0.94 + ramp * 0.45,
+    damageMultiplier: 0.94 + ramp * 0.25,
+    signatureChanceBonus: ramp * 0.24 - 0.03,
   };
 }
 
@@ -156,8 +156,7 @@ function buildRecommendation(colors: number[], portal: PortalEffectDefinition, e
 
 export function createStageTheme(): StageTheme {
   const primary = Math.floor(Math.random() * WARRIOR_COLORS.length);
-  const dominantColorIndices = [primary];
-  if (Math.random() < BATTLE_CONFIG.challengeStageDualColorChance) dominantColorIndices.push(pickUniqueColor(dominantColorIndices));
+  const dominantColorIndices = [primary, pickUniqueColor([primary])];
 
   let portalEffect = pick(PORTAL_EFFECTS);
   let enemyTheme = pick(ENEMY_THEMES);

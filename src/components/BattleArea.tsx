@@ -3,7 +3,7 @@ import { BATTLE_CONFIG, NEUTRAL_HEX_COLOR, SPAWN_PHASES, WARRIOR_COLORS } from '
 import { BattleSnapshot, BattleState } from '../types';
 import { EnemyVisual } from './EnemyVisual';
 import { WarriorVisual } from './WarriorVisual';
-import { BattleViewport } from '../game/battle';
+import { BattleViewport, getSuddenDeathLevel } from '../game/battle';
 import { DEFAULT_GAME_DESIGN } from '../game/design';
 import { PlayerBuildState } from '../game/progression';
 import { StageTheme } from '../game/stageTheme';
@@ -74,6 +74,15 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
   const lastEnemySpawnRef = useRef<number>(0);
   const reqRef = useRef<number>(0);
   const lastSnapshotRef = useRef<BattleSnapshot | null>(null);
+  const pausedRef = useRef(props.paused);
+  const buildRef = useRef(props.build);
+  const onGameEndRef = useRef(props.onGameEnd);
+  const onBattleStateChangeRef = useRef(props.onBattleStateChange);
+
+  pausedRef.current = props.paused;
+  buildRef.current = props.build;
+  onGameEndRef.current = props.onGameEnd;
+  onBattleStateChangeRef.current = props.onBattleStateChange;
 
   useEffect(() => {
     stateRef.current = state;
@@ -140,19 +149,19 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
       const dt = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
 
-      if (!props.paused && stateRef.current.status === 'playing' && containerRef.current) {
+      if (!pausedRef.current && stateRef.current.status === 'playing' && containerRef.current) {
         const layout = getBattleLayout(containerRef.current.clientWidth, containerRef.current.clientHeight);
         const step = DEFAULT_GAME_DESIGN.battle.stepBattleState({
           state: stateRef.current,
           dt,
           viewport: layout.viewport,
           lastEnemySpawnAt: lastEnemySpawnRef.current,
-          build: props.build,
+          build: buildRef.current,
         });
 
         lastEnemySpawnRef.current = step.lastEnemySpawnAt;
         if (step.result.outcome) {
-          props.onGameEnd?.(step.result.outcome);
+          onGameEndRef.current?.(step.result.outcome);
         }
       }
 
@@ -171,7 +180,7 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
         lastSnapshotRef.current.phase !== snapshot.phase
       ) {
         lastSnapshotRef.current = snapshot;
-        props.onBattleStateChange?.(snapshot);
+        onBattleStateChangeRef.current?.(snapshot);
       }
 
       setState({ ...stateRef.current });
@@ -180,7 +189,7 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
 
     reqRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(reqRef.current);
-  }, [props.build, props.onBattleStateChange, props.onGameEnd, props.paused]);
+  }, []);
 
   const playerBaseHpPct = Math.max(0, state.playerBaseHp / BATTLE_CONFIG.playerBaseMaxHealth) * 100;
   const enemyStructureHpPct = Math.max(0, state.enemyStructureHp / BATTLE_CONFIG.enemyStructureMaxHealth) * 100;
@@ -191,6 +200,8 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
   const battleLayout = getBattleLayout(containerSize.width, containerSize.height);
   const enemyStructureLeft = `${BATTLE_CONFIG.enemyStructureXRatio * 100}%`;
   const phaseNumber = Math.min(state.phase + 1, SPAWN_PHASES.length);
+  const suddenDeathLevel = getSuddenDeathLevel(state.battleTimeSec);
+  const suddenDeathDamageMultiplier = 1 + suddenDeathLevel * BATTLE_CONFIG.suddenDeathDamageBonusPerStep;
 
   const getEntityTransform = (entity: BattleState['entities'][number]) => {
     const duration = entity.attackVisualDurationMs || 1;
@@ -289,6 +300,7 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
                     {entity.warded && <div className="absolute inset-0 rounded-full border-2 border-cyan-200 bg-cyan-300/15 shadow-[0_0_14px_rgba(103,232,249,.8)]" />}
                     {entity.poisonStacks > 0 && <div className="absolute -left-1 top-1 rounded-full bg-green-500 px-1 text-[8px] font-black text-black">{entity.poisonStacks}</div>}
                     {entity.frozenTimer > 0 && <div className="absolute -right-1 top-1 text-sm drop-shadow-md">❄</div>}
+                    {entity.stunnedTimer > 0 && <div className="absolute right-2 -top-1 text-sm drop-shadow-md">⚡</div>}
                     {entity.armor > 0 && <div className="absolute -left-1 bottom-2 text-xs drop-shadow-md">⬟</div>}
                   </div>
                 )}
@@ -377,6 +389,18 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
         PHASE {phaseNumber} / {SPAWN_PHASES.length}
       </div>
 
+      {state.enemyWavesSuppressed && (
+        <div className="absolute top-10 left-4 z-40 rounded-full border border-cyan-300/30 bg-cyan-950/75 px-3 py-1 text-[9px] font-black tracking-[0.18em] text-cyan-100 shadow-md">
+          PORTAL WAVES PAUSED
+        </div>
+      )}
+
+      {suddenDeathLevel > 0 && (
+        <div className="absolute top-10 left-1/2 z-40 -translate-x-1/2 rounded-full border border-orange-300/70 bg-red-950/90 px-3 py-1 text-[10px] font-black tracking-[0.16em] text-amber-100 shadow-[0_0_16px_rgba(239,68,68,.55)] animate-pulse">
+          SUDDEN DEATH ×{suddenDeathDamageMultiplier.toFixed(1)}
+        </div>
+      )}
+
       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-2.5 bg-red-950/75 z-30 flex items-center justify-center overflow-hidden rounded-full border border-red-900/70">
         <div
           className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-red-700 via-orange-500 to-amber-300 transition-all duration-300"
@@ -395,6 +419,13 @@ export const BattleArea = forwardRef<BattleAreaRef, BattleAreaProps>((props, ref
         <span className="relative text-[10px] font-bold text-white drop-shadow-md tracking-wider">
           YOUR GATE HP: {Math.max(0, Math.floor(state.playerBaseHp))}
         </span>
+        {[20, 40, 60, 80].map((threshold) => (
+          <span
+            key={threshold}
+            className="absolute inset-y-0 w-px bg-white/45"
+            style={{ left: `${threshold}%` }}
+          />
+        ))}
       </div>
 
       {props.paused && (

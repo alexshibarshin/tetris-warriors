@@ -40,6 +40,7 @@ function createWaveState(stageTheme: StageTheme): BattleState {
     enemyStructureHp: BATTLE_CONFIG.enemyStructureMaxHealth,
     battleTimeSec: 0, phase: 0, startDelayTimer: BATTLE_CONFIG.initialWaveDelaySec,
     enemyStructureAttackTimer: 0, enemySpawnCooldownMs: 900, waveIndex: 0, phaseWaveIndex: 0,
+    playerBasePulseCount: 0, enemyWavesSuppressed: false,
     portalEffectTimer: Math.max(4, stageTheme.portalEffect.intervalSec * 0.65),
     status: 'playing', stageTheme,
   };
@@ -80,6 +81,15 @@ function incomingMultiplier(state: BattleState, target: Entity) {
   if (target.frozenTimer > 0 && sourceHas(state, target.frozenById, 'shatter')) multiplier *= 1.3;
   if (target.tauntTimer > 0 && sourceHas(state, target.tauntSourceId, 'challenge-mark')) multiplier *= 1.3;
   return multiplier;
+}
+
+export function getSuddenDeathLevel(battleTimeSec: number) {
+  if (battleTimeSec < BATTLE_CONFIG.suddenDeathStartSec) return 0;
+  return 1 + Math.floor((battleTimeSec - BATTLE_CONFIG.suddenDeathStartSec) / BATTLE_CONFIG.suddenDeathIntervalSec);
+}
+
+function suddenDeathDamageMultiplier(state: BattleState) {
+  return 1 + getSuddenDeathLevel(state.battleTimeSec) * BATTLE_CONFIG.suddenDeathDamageBonusPerStep;
 }
 
 function nearestEntity(state: BattleState, origin: Entity, faction: 'player' | 'enemy', excludedId?: string) {
@@ -137,7 +147,7 @@ function processDeath(state: BattleState, target: Entity, attacker: Entity | nul
     const blast = target.enemyKind === 'signature' ? 13 : 8;
     addEffect(state, 'explosion', target.x, target.y, radius, 0.6);
     for (const warrior of living(state, 'player')) {
-      if (distance(warrior, target) <= radius) applyDamage(state, warrior, blast, null, false);
+      if (distance(warrior, target) <= radius) applyDamage(state, warrior, blast * suddenDeathDamageMultiplier(state), null, false);
     }
   }
 }
@@ -184,7 +194,7 @@ function applyFrostHit(state: BattleState, source: Entity, target: Entity) {
   freezeTarget(state, target, source, 1);
   if (hasPerk(source.perks, 'shard-volley')) {
     for (const enemy of living(state, 'enemy').filter((entity) => entity.id !== target.id && distance(entity, target) <= 90).slice(0, 3)) {
-      applyDamage(state, enemy, WARRIOR_BY_ID['blue-hunter'].baseDamage * getTierStatMultiplier(source.tier) * 0.6, source);
+      applyDamage(state, enemy, WARRIOR_BY_ID['blue-hunter'].baseDamage * getTierStatMultiplier(source.tier) * 0.6 * suddenDeathDamageMultiplier(state), source);
     }
   }
 }
@@ -211,10 +221,10 @@ function playerDamage(state: BattleState, attacker: Entity, target: Entity | nul
   attacker.empoweredHitMultiplier = 1;
   if (structure) {
     if (!state.stageTheme.dominantColorIndices.includes(attacker.colorIdx ?? -1)) damage *= BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
-    return damage * 0.9;
+    return damage * 0.9 * suddenDeathDamageMultiplier(state);
   }
   if (target?.colorIdx !== null && target?.colorIdx !== attacker.colorIdx) damage *= BATTLE_CONFIG.warriorWrongColorDamageMultiplier;
-  return damage;
+  return damage * suddenDeathDamageMultiplier(state);
 }
 
 function pushProjectile(state: BattleState, attacker: Entity, target: Entity, damage: number, frostHit = false, xOffset = 0) {
@@ -383,7 +393,7 @@ function updateStatuses(state: BattleState, dt: number) {
     if (entity.regenPerSec > 0) entity.hp = Math.min(entity.maxHp, entity.hp + entity.regenPerSec * dt);
     if (entity.poisonTimer > 0 && entity.poisonStacks > 0) {
       entity.poisonTimer -= dt;
-      entity.hp -= entity.poisonDps * dt;
+      entity.hp -= entity.poisonDps * suddenDeathDamageMultiplier(state) * dt;
       if (entity.hp <= 0) {
         const source = entity.poisonSourceId ? state.entities.find((candidate) => candidate.id === entity.poisonSourceId) ?? null : null;
         processDeath(state, entity, source);
@@ -408,11 +418,11 @@ function enemyProfile(theme: StageTheme, signature: boolean, phase: SpawnPhase, 
   let move = 1;
   // Each theme spends a comparable threat budget on one readable pressure.
   // It must not also get a large hidden stat increase on top of that identity.
-  if (theme.enemyTheme.id === 'horde') { hp *= 0.58; damage *= 0.58; }
-  if (theme.enemyTheme.id === 'elite') { hp *= 1.65; damage *= 1.12; }
-  if (theme.enemyTheme.id === 'armor') { hp *= 1.05; armor = 2; }
-  if (theme.enemyTheme.id === 'rush') { hp *= 0.76; damage *= 0.75; move = 1.38; }
-  if (theme.enemyTheme.id === 'regen') regen = hp * 0.012;
+  if (theme.enemyTheme.id === 'horde') { hp *= 0.78; damage *= 0.72; }
+  if (theme.enemyTheme.id === 'elite') { hp *= 1.4; damage *= 1.25; }
+  if (theme.enemyTheme.id === 'armor') { hp *= 1.05; armor = 1; }
+  if (theme.enemyTheme.id === 'rush') { hp *= 0.85; damage *= 0.85; move = 1.25; }
+  if (theme.enemyTheme.id === 'regen') regen = hp * 0.009;
   if (signature) { hp *= 1.45; damage *= 1.12; armor += theme.enemyTheme.id === 'armor' ? 1 : 0; }
   return { hp, damage, armor, regen, move };
 }
@@ -447,6 +457,12 @@ function packSize(state: BattleState, phase: SpawnPhase, pressure: WavePressureP
   return size;
 }
 
+function enemiesPressuringPlayerBase(state: BattleState, viewport: BattleViewport) {
+  return living(state, 'enemy').filter(
+    (enemy) => enemy.y >= viewport.height - BATTLE_CONFIG.playerBasePulseRangePx,
+  );
+}
+
 function updateWaves(state: BattleState, viewport: BattleViewport, dt: number) {
   if (state.startDelayTimer > 0) return;
   const nextPhase = SPAWN_PHASES.reduce((index, phase, candidate) => state.battleTimeSec >= phase.startAtSec ? candidate : index, 0);
@@ -456,18 +472,48 @@ function updateWaves(state: BattleState, viewport: BattleViewport, dt: number) {
     state.enemySpawnCooldownMs = Math.min(state.enemySpawnCooldownMs, 800);
   }
   const phase = currentPhase(state.phase);
+  state.enemyWavesSuppressed =
+    enemiesPressuringPlayerBase(state, viewport).length >= BATTLE_CONFIG.enemyWaveSuppressionAttackerCount;
+  if (state.enemyWavesSuppressed) return;
   state.enemySpawnCooldownMs -= dt * 1000;
   if (state.enemySpawnCooldownMs > 0) return;
   const pressure = getWavePressureProfile(state.stageTheme.spawnPattern.id, state.phaseWaveIndex);
   const size = packSize(state, phase, pressure);
   for (let index = 0; index < size; index += 1) spawnEnemy(state, viewport, pressure);
 
-  // I = clamp(I_phase × I_pattern, 3.2s, 14s). A strong player build is a
-  // deserved advantage; stage pressure is determined only by its contract.
+  // The generated stage contract is static: player power never changes its
+  // packs or cadence. A strong build is allowed to turn that into an easier win.
   const intervalMs = phase.spawnIntervalSec * 1000 * pressure.intervalMultiplier;
   state.enemySpawnCooldownMs = Math.max(3200, Math.min(14000, intervalMs * (0.92 + Math.random() * 0.16)));
   state.waveIndex += 1;
   state.phaseWaveIndex += 1;
+}
+
+function triggerPlayerBasePulseIfNeeded(state: BattleState, viewport: BattleViewport) {
+  const lostHealthShare = 1 - state.playerBaseHp / BATTLE_CONFIG.playerBaseMaxHealth;
+  const reachedPulseCount = Math.min(
+    BATTLE_CONFIG.playerBasePulseCount,
+    Math.floor((lostHealthShare + Number.EPSILON) / BATTLE_CONFIG.playerBasePulseHealthStep),
+  );
+  if (reachedPulseCount <= state.playerBasePulseCount || state.playerBaseHp <= 0) return;
+
+  state.playerBasePulseCount = reachedPulseCount;
+  const pulseX = viewport.width / 2;
+  const pulseY = viewport.height;
+  addEffect(state, 'knockback', pulseX, pulseY, BATTLE_CONFIG.playerBasePulseRangePx, 0.9);
+  addText(state, pulseX, pulseY - 34, 'WALL PULSE!', '#fde68a');
+
+  for (const enemy of living(state, 'enemy')) {
+    if (enemy.y < viewport.height - BATTLE_CONFIG.playerBasePulseRangePx) continue;
+    const horizontalDirection = Math.sign(enemy.x - pulseX);
+    enemy.x = Math.max(
+      10,
+      Math.min(viewport.width - 10, enemy.x + horizontalDirection * BATTLE_CONFIG.playerBasePulseKnockbackPx * 0.25),
+    );
+    enemy.y -= BATTLE_CONFIG.playerBasePulseKnockbackPx;
+    enemy.stunnedTimer = Math.max(enemy.stunnedTimer, BATTLE_CONFIG.playerBasePulseStunSec);
+    applyDamage(state, enemy, BATTLE_CONFIG.playerBasePulseDamage * suddenDeathDamageMultiplier(state), null, false);
+  }
 }
 
 function updatePortalEffect(state: BattleState, viewport: BattleViewport, dt: number) {
@@ -555,7 +601,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
           triggerAttackVisual(entity, target);
           if (entity.faction === 'player') performPlayerAttack(state, entity, target);
           else {
-            const damage = BATTLE_CONFIG.enemyDamage * entity.damageMultiplier;
+            const damage = BATTLE_CONFIG.enemyDamage * entity.damageMultiplier * suddenDeathDamageMultiplier(state);
             if (entity.unitClass === 'ranged') pushProjectile(state, entity, target, damage);
             else applyDamage(state, target, damage, entity);
           }
@@ -577,9 +623,10 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
         attacking = true;
         if (entity.attackTimer <= 0) {
           entity.attackTimer = BATTLE_CONFIG.attackCooldownMs;
-          const damage = Math.round(BATTLE_CONFIG.playerBaseDamage * currentPhase(state.phase).damageMultiplier);
+          const damage = Math.round(BATTLE_CONFIG.playerBaseDamage * currentPhase(state.phase).damageMultiplier * suddenDeathDamageMultiplier(state));
           state.playerBaseHp -= damage;
           addText(state, entity.x, viewport.height - 10, damage.toString(), '#ef4444');
+          triggerPlayerBasePulseIfNeeded(state, viewport);
         }
       }
     } else {
@@ -614,7 +661,7 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
       if (target) {
         state.enemyStructureAttackTimer = BATTLE_CONFIG.structureAttackCooldownMs;
         const fake = baseEntity({ id: 'enemy-structure', faction: 'enemy', unitClass: 'ranged', x: structure.x, y: structure.y + 10 });
-        pushProjectile(state, fake, target, Math.round(BATTLE_CONFIG.structureDamage * (BATTLE_CONFIG.structureDamageMultipliersByPhase[state.phase] ?? 1)));
+        pushProjectile(state, fake, target, Math.round(BATTLE_CONFIG.structureDamage * (BATTLE_CONFIG.structureDamageMultipliersByPhase[state.phase] ?? 1) * suddenDeathDamageMultiplier(state)));
       }
     }
   }

@@ -1,5 +1,5 @@
 import { generateShapeSequence } from './generator';
-import { applyShapeToBoard, createInitialBoard, fillCell, fillRandomEmptyCell, fillRandomEmptyCellsWithBoosters, fillRandomEmptyCellsWithColor, generateCell, getPlacementMatchBonus, pickRandomEmptyCell } from './board';
+import { applyShapeToBoard, createInitialBoard, fillCell, fillRandomEmptyCell, fillRandomEmptyCellsWithBoosters, fillRandomEmptyCellsWithColor, generateCell, getBoardRespawnIntervalMs, getPlacementMatchBonus, pickRandomEmptyCell } from './board';
 import { createBattleState, healPlayerBase, spawnPlayerWarriors, stepBattleState } from './battle';
 
 export const DEFAULT_GAME_DESIGN = {
@@ -11,6 +11,7 @@ export const DEFAULT_GAME_DESIGN = {
     fillRandomEmptyCellsWithColor,
     fillRandomEmptyCellsWithBoosters,
     pickRandomEmptyCell,
+    getBoardRespawnIntervalMs,
     applyShapeToBoard,
     getPlacementMatchBonus,
   },

@@ -606,9 +606,10 @@ export default function App() {
     }
 
     let frameId = 0;
+    const respawnIntervalMs = DEFAULT_GAME_DESIGN.board.getBoardRespawnIntervalMs(board);
 
     const tick = (now: number) => {
-      const progress = Math.min((now - nextSpawnStartedAt) / BOARD_CONFIG.respawnIntervalMs, 1);
+      const progress = Math.min((now - nextSpawnStartedAt) / respawnIntervalMs, 1);
       setNextSpawnProgress(progress);
 
       if (progress >= 1) {
@@ -624,7 +625,7 @@ export default function App() {
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [gameStatus, isBattlePaused, nextSpawnCell, nextSpawnStartedAt, playerBuild]);
+  }, [board, gameStatus, isBattlePaused, nextSpawnCell, nextSpawnStartedAt, playerBuild]);
 
   const handleRestart = () => {
     const nextBuild = createInitialPlayerBuild();
@@ -687,7 +688,7 @@ export default function App() {
       }
 
       setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
-      setGeneratorStage(matchBonus?.generatedCells ?? 0);
+      setGeneratorStage(Math.min(1 + (matchBonus?.generatedCells ?? 0), GENERATOR_CONFIG.stageCount));
       setDragState('idle');
 
       if (matchBonus) {

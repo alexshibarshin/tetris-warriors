@@ -161,6 +161,23 @@ export function fillRandomEmptyCell(board: CellData[][], build: PlayerBuildState
   return fillCell(board, targetCell, build);
 }
 
+export function getBoardRespawnIntervalMs(board: CellData[][]): number {
+  const occupiedCells = board.reduce(
+    (total, row) => total + row.filter((cell) => cell.state === 'ready').length,
+    0,
+  );
+
+  if (occupiedCells <= BOARD_CONFIG.criticalOccupancyMax) {
+    return BOARD_CONFIG.respawnIntervalsMs.critical;
+  }
+
+  if (occupiedCells <= BOARD_CONFIG.lowOccupancyMax) {
+    return BOARD_CONFIG.respawnIntervalsMs.low;
+  }
+
+  return BOARD_CONFIG.respawnIntervalsMs.normal;
+}
+
 export function pickRandomEmptyCell(board: CellData[][]): BoardCellPosition | null {
   const emptyCells: BoardCellPosition[] = [];
 
