@@ -13,7 +13,6 @@ export const GAME_CONFIG = {
   generator: {
     dragOffsetPx: -80,
     idleScale: 0.6,
-    stageCount: 4,
     tetrominoRotationCount: 4,
     coinTargetShare: 0.225,
     coinMinShare: 0.2,
@@ -22,10 +21,10 @@ export const GAME_CONFIG = {
     coinRecoveryChance: 0.6,
     coinSurplusChance: 0.05,
     previewGrabInsetPx: 10,
-    slotWidthPx: 40,
-    slotHeightPx: 20,
-    spacerSizePx: 12,
-    stageDurationsMs: [3000, 2500, 2200, 2000],
+    maxStoredFigures: 3,
+    cellGenerationIntervalMs: 2000,
+    initialShapeCells: 2,
+    discardEnabled: true,
   },
   battle: {
     gameplayHeightPx: 420,

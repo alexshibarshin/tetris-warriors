@@ -31,11 +31,13 @@ import {
 
 function TimerProgress({
   stage,
+  isFull,
   isDragging,
   paused,
   onAdvanceStage,
 }: {
   stage: number;
+  isFull: boolean;
   isDragging: boolean;
   paused: boolean;
   onAdvanceStage: () => void;
@@ -44,10 +46,7 @@ function TimerProgress({
   const lastTimeRef = useRef(performance.now());
   const elapsedRef = useRef(0);
 
-  const targetDuration =
-    stage < GENERATOR_CONFIG.stageDurationsMs.length
-      ? GENERATOR_CONFIG.stageDurationsMs[stage]
-      : Infinity;
+  const targetDuration = GENERATOR_CONFIG.cellGenerationIntervalMs;
 
   useEffect(() => {
     elapsedRef.current = 0;
@@ -59,7 +58,7 @@ function TimerProgress({
     let frameId: number;
     const tick = (now: number) => {
       frameId = requestAnimationFrame(tick);
-      if (stage === GENERATOR_CONFIG.stageCount) {
+      if (isFull) {
         return;
       }
 
@@ -81,9 +80,9 @@ function TimerProgress({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [isDragging, onAdvanceStage, paused, stage, targetDuration]);
+  }, [isDragging, isFull, onAdvanceStage, paused, stage, targetDuration]);
 
-  if (stage === GENERATOR_CONFIG.stageCount) {
+  if (isFull) {
     return (
       <div className="w-12 h-12 flex items-center justify-center rounded-full border border-yellow-500/25 bg-yellow-400/10 text-yellow-400 font-black text-[11px] leading-none">
         MAX
@@ -153,12 +152,13 @@ function getUpgradeCopy(card: UpgradeCard, playerBuild: ReturnType<typeof create
 export default function App() {
   const [playerBuild, setPlayerBuild] = useState(() => createInitialPlayerBuild());
   const [stageTheme, setStageTheme] = useState(() => createStageTheme());
-  const [generatorSequence, setGeneratorSequence] = useState<ShapeDef[]>(
-    DEFAULT_GAME_DESIGN.generator.generateShapeSequence,
-  );
-  const [generatorStage, setGeneratorStage] = useState(1);
+  const [generatorFigures, setGeneratorFigures] = useState(() => [{
+    sequence: DEFAULT_GAME_DESIGN.generator.generateShapeSequence(),
+    stage: GENERATOR_CONFIG.initialShapeCells,
+  }]);
   const [board, setBoard] = useState<CellData[][]>(() => DEFAULT_GAME_DESIGN.board.createInitialBoard(createInitialPlayerBuild()));
   const [dragState, setDragState] = useState<DragState>('idle');
+  const [draggedFigureIndex, setDraggedFigureIndex] = useState<number | null>(null);
   const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
   const [activatedCells, setActivatedCells] = useState<BoardCellPosition[]>([]);
   const [activatedBoosters, setActivatedBoosters] = useState<ReturnType<typeof DEFAULT_GAME_DESIGN.board.applyShapeToBoard>['activatedBoosters']>([]);
@@ -175,13 +175,15 @@ export default function App() {
   const [upgradeRerollAvailable, setUpgradeRerollAvailable] = useState(false);
   const [pendingUpgradeDrafts, setPendingUpgradeDrafts] = useState(0);
   const [boardRect, setBoardRect] = useState<DOMRect | null>(null);
-  const [generatorRect, setGeneratorRect] = useState<DOMRect | null>(null);
+  const [generatorRects, setGeneratorRects] = useState<DOMRect[]>([]);
+  const [discardRect, setDiscardRect] = useState<DOMRect | null>(null);
   const [nextSpawnCell, setNextSpawnCell] = useState<BoardCellPosition | null>(null);
   const [nextSpawnProgress, setNextSpawnProgress] = useState(0);
   const [nextSpawnStartedAt, setNextSpawnStartedAt] = useState<number | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
-  const generatorRef = useRef<HTMLDivElement>(null);
+  const generatorRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const discardRef = useRef<HTMLDivElement>(null);
   const battleAreaRef = useRef<BattleAreaRef>(null);
   const pauseStartedAtRef = useRef<number | null>(null);
 
@@ -189,7 +191,24 @@ export default function App() {
   const isBattlePaused = gameStatus === 'playing' && isUpgradeOpen;
 
   const handleAdvanceStage = useRef(() => {
-    setGeneratorStage((stage) => Math.min(stage + 1, GENERATOR_CONFIG.stageCount));
+    setGeneratorFigures((figures) => {
+      const figureIndex = figures.findIndex((figure) => figure.stage < GENERATOR_CONFIG.tetrominoRotationCount);
+      if (figureIndex === -1) return figures;
+
+      const nextFigures = figures.map((figure, index) =>
+        index === figureIndex
+          ? { ...figure, stage: Math.min(figure.stage + 1, GENERATOR_CONFIG.tetrominoRotationCount) }
+          : figure,
+      );
+      const completedFigure = nextFigures[figureIndex];
+      if (
+        completedFigure.stage === GENERATOR_CONFIG.tetrominoRotationCount &&
+        nextFigures.length < GENERATOR_CONFIG.maxStoredFigures
+      ) {
+        nextFigures.push({ sequence: DEFAULT_GAME_DESIGN.generator.generateShapeSequence(), stage: 0 });
+      }
+      return nextFigures;
+    });
   }).current;
 
   useLayoutEffect(() => {
@@ -197,9 +216,8 @@ export default function App() {
       if (boardRef.current) {
         setBoardRect(boardRef.current.getBoundingClientRect());
       }
-      if (generatorRef.current) {
-        setGeneratorRect(generatorRef.current.getBoundingClientRect());
-      }
+      setGeneratorRects(generatorRefs.current.flatMap((element) => element ? [element.getBoundingClientRect()] : []));
+      if (discardRef.current) setDiscardRect(discardRef.current.getBoundingClientRect());
     };
 
     measure();
@@ -281,10 +299,13 @@ export default function App() {
     setStageTheme(nextTheme);
     setCoins(0);
     setBoard(DEFAULT_GAME_DESIGN.board.createInitialBoard(nextBuild));
-    setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
-    setGeneratorStage(1);
+    setGeneratorFigures([{
+      sequence: DEFAULT_GAME_DESIGN.generator.generateShapeSequence(),
+      stage: GENERATOR_CONFIG.initialShapeCells,
+    }]);
     setGameStatus('playing');
     setDragState('idle');
+    setDraggedFigureIndex(null);
     setUpgradeChoices(null);
     setUpgradeRerollAvailable(false);
     setPendingUpgradeDrafts(0);
@@ -297,7 +318,8 @@ export default function App() {
   };
 
   const cellSize = boardRect ? boardRect.width / BOARD_CONFIG.cols : 0;
-  const shape = generatorStage > 0 ? generatorSequence[generatorStage - 1] : null;
+  const activeFigureIndex = draggedFigureIndex ?? -1;
+  const shape = activeFigureIndex >= 0 ? generatorFigures[activeFigureIndex]?.sequence[generatorFigures[activeFigureIndex].stage - 1] ?? null : null;
   const placement = evaluatePlacementPreview({
     dragState,
     shape,
@@ -309,6 +331,31 @@ export default function App() {
   const handleDrop = () => {
     if (isBattlePaused) {
       setDragState('idle');
+      return;
+    }
+
+    const removeDraggedFigure = () => {
+      if (draggedFigureIndex === null) return;
+      setGeneratorFigures((figures) => {
+        const nextFigures = figures.filter((_, index) => index !== draggedFigureIndex);
+        if (nextFigures.length < GENERATOR_CONFIG.maxStoredFigures && nextFigures.every((figure) => figure.stage === GENERATOR_CONFIG.tetrominoRotationCount)) {
+          nextFigures.push({ sequence: DEFAULT_GAME_DESIGN.generator.generateShapeSequence(), stage: 0 });
+        }
+        return nextFigures;
+      });
+    };
+
+    const isOverDiscard = Boolean(
+      GENERATOR_CONFIG.discardEnabled && discardRect &&
+      pointerPos.x >= discardRect.left && pointerPos.x <= discardRect.right &&
+      pointerPos.y >= discardRect.top && pointerPos.y <= discardRect.bottom,
+    );
+
+    if (isOverDiscard && shape) {
+      setBoard((currentBoard) => DEFAULT_GAME_DESIGN.board.fillRandomEmptyCells(currentBoard, playerBuild, shape.blocks.length));
+      removeDraggedFigure();
+      setDragState('idle');
+      setDraggedFigureIndex(null);
       return;
     }
 
@@ -327,9 +374,9 @@ export default function App() {
         }
       }
 
-      setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
-      setGeneratorStage(0);
+      removeDraggedFigure();
       setDragState('idle');
+      setDraggedFigureIndex(null);
 
       setTimeout(() => {
         setActivatedCells([]);
@@ -342,6 +389,7 @@ export default function App() {
     }
 
     setDragState('idle');
+    setDraggedFigureIndex(null);
   };
 
   useEffect(() => {
@@ -444,39 +492,50 @@ export default function App() {
   const getActivatedBooster = (r: number, c: number) =>
     activatedBoosters.find((booster) => booster.position.r === r && booster.position.c === c);
 
+  const generatingFigure = generatorFigures.find((figure) => figure.stage < GENERATOR_CONFIG.tetrominoRotationCount);
+  const isGeneratorFull = generatorFigures.length === GENERATOR_CONFIG.maxStoredFigures && !generatingFigure;
+  const isOverDiscardTarget = Boolean(
+    GENERATOR_CONFIG.discardEnabled && discardRect && dragState === 'dragging' &&
+    pointerPos.x >= discardRect.left && pointerPos.x <= discardRect.right &&
+    pointerPos.y >= discardRect.top && pointerPos.y <= discardRect.bottom,
+  );
+
   const renderPiece = () => {
-    if (generatorStage === 0 || !shape || !cellSize || !generatorRect) {
+    if (!cellSize || generatorRects.length === 0) {
       return null;
     }
+    return generatorFigures.map((figure, figureIndex) => {
+      const figureShape = figure.stage > 0 ? figure.sequence[figure.stage - 1] : null;
+      const generatorRect = generatorRects[figureIndex];
+      if (!figureShape || !generatorRect) return null;
 
-    const pieceWidth = shape.width * cellSize;
-    const pieceHeight = shape.height * cellSize;
-    let targetX = 0;
-    let targetY = 0;
-    let targetScale = 1;
+      const pieceWidth = figureShape.width * cellSize;
+      const pieceHeight = figureShape.height * cellSize;
+      const isDragged = dragState === 'dragging' && draggedFigureIndex === figureIndex;
+      let targetX = generatorRect.left + generatorRect.width / 2 - figureShape.cx * cellSize;
+      let targetY = generatorRect.top + generatorRect.height / 2 - figureShape.cy * cellSize;
+      let targetScale: number = GENERATOR_CONFIG.idleScale;
 
-    if (dragState === 'idle') {
-      targetX = generatorRect.left + generatorRect.width / 2 - shape.cx * cellSize;
-      targetY = generatorRect.top + generatorRect.height / 2 - shape.cy * cellSize;
-      targetScale = GENERATOR_CONFIG.idleScale;
-    } else if (placement.isOverBoard && boardRect) {
-      targetX = boardRect.left + placement.snappedC * cellSize;
-      targetY = boardRect.top + placement.snappedR * cellSize;
-    } else {
-      targetX = pointerPos.x - shape.cx * cellSize;
-      targetY = pointerPos.y + GENERATOR_CONFIG.dragOffsetPx - shape.cy * cellSize;
-    }
+      if (isDragged && placement.isOverBoard && boardRect) {
+        targetX = boardRect.left + placement.snappedC * cellSize;
+        targetY = boardRect.top + placement.snappedR * cellSize;
+        targetScale = 1;
+      } else if (isDragged) {
+        targetX = pointerPos.x - figureShape.cx * cellSize;
+        targetY = pointerPos.y + GENERATOR_CONFIG.dragOffsetPx - figureShape.cy * cellSize;
+        targetScale = 1;
+      }
 
-    const isInvalid = dragState === 'dragging' && placement.isOverBoard && !placement.isValidPlacement;
+      const isInvalid = isDragged && placement.isOverBoard && !placement.isValidPlacement;
 
-    return (
+      return (
       <motion.div
-        key="shape-container"
+        key={`shape-${figureIndex}-${figure.stage}`}
         initial={{ x: targetX, y: targetY, scale: 0, opacity: 0 }}
         animate={{ x: targetX, y: targetY, scale: targetScale, opacity: 1 }}
         transition={{
-          type: dragState === 'dragging' ? 'tween' : 'spring',
-          duration: dragState === 'dragging' ? 0 : 0.35,
+          type: isDragged ? 'tween' : 'spring',
+          duration: isDragged ? 0 : 0.35,
           bounce: 0.2,
         }}
         style={{
@@ -485,8 +544,8 @@ export default function App() {
           left: 0,
           width: pieceWidth,
           height: pieceHeight,
-          originX: shape.cx / shape.width,
-          originY: shape.cy / shape.height,
+          originX: figureShape.cx / figureShape.width,
+          originY: figureShape.cy / figureShape.height,
           zIndex: 50,
           touchAction: 'none',
           pointerEvents: isBattlePaused ? 'none' : 'auto',
@@ -494,17 +553,18 @@ export default function App() {
         onPointerDown={(event) => {
           if (dragState === 'idle' && !isBattlePaused) {
             (event.target as HTMLElement).setPointerCapture(event.pointerId);
+            setDraggedFigureIndex(figureIndex);
             setDragState('dragging');
             setPointerPos({ x: event.clientX, y: event.clientY });
           }
         }}
         onPointerMove={(event) => {
-          if (dragState === 'dragging') {
+          if (isDragged) {
             setPointerPos({ x: event.clientX, y: event.clientY });
           }
         }}
         onPointerUp={(event) => {
-          if (dragState === 'dragging') {
+          if (isDragged) {
             try {
               (event.target as HTMLElement).releasePointerCapture(event.pointerId);
             } catch {}
@@ -512,7 +572,7 @@ export default function App() {
           }
         }}
         onPointerCancel={(event) => {
-          if (dragState === 'dragging') {
+          if (isDragged) {
             try {
               (event.target as HTMLElement).releasePointerCapture(event.pointerId);
             } catch {}
@@ -522,7 +582,7 @@ export default function App() {
       >
         <div className="absolute cursor-grab" style={{ inset: -GENERATOR_CONFIG.previewGrabInsetPx }} />
 
-        {shape.blocks.map((block) => (
+        {figureShape.blocks.map((block) => (
           <motion.div
             key={block.id}
             initial={{ scale: 0, opacity: 0, left: block.x * cellSize, top: block.y * cellSize }}
@@ -545,7 +605,8 @@ export default function App() {
           </motion.div>
         ))}
       </motion.div>
-    );
+      );
+    });
   };
 
   return (
@@ -643,28 +704,45 @@ export default function App() {
             )}
           </div>
 
-          <div className="w-full max-w-[360px] mt-2 h-[96px] relative">
-            <div
-              className="absolute inset-y-0 left-0 w-1/2 flex items-center justify-end pr-8"
-            >
+          <div className="w-full max-w-[360px] mt-1 flex items-center justify-center gap-3">
+            {GENERATOR_CONFIG.discardEnabled && (
+              <div
+                ref={discardRef}
+                className={`w-12 h-12 shrink-0 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors ${
+                  isOverDiscardTarget
+                    ? 'border-orange-300 bg-orange-500/30 text-orange-100 scale-110'
+                    : 'border-orange-500/45 bg-orange-950/35 text-orange-300/80'
+                }`}
+              >
+                <span className="text-lg leading-none">↯</span>
+                <span className="text-[7px] font-black tracking-wide">RESET</span>
+              </div>
+            )}
+
+            <div className="h-[88px] min-w-0 flex-1 max-w-[270px] rounded-2xl bg-neutral-950/55 border border-neutral-700/80 shadow-inner px-2 flex items-center justify-center gap-1.5">
+              {Array.from({ length: GENERATOR_CONFIG.maxStoredFigures }, (_, index) => (
+                <div
+                  key={index}
+                  ref={(element) => { generatorRefs.current[index] = element; }}
+                  className={`relative h-[68px] flex-1 min-w-0 rounded-lg border flex items-center justify-center ${
+                    generatorFigures[index]
+                      ? 'bg-neutral-800 border-neutral-600/80'
+                      : 'bg-neutral-900/65 border-neutral-800 border-dashed'
+                  }`}
+                >
+                  {!generatorFigures[index] && <span className="text-neutral-700 text-[10px] font-black">+</span>}
+                </div>
+              ))}
+            </div>
+
+            <div className="shrink-0 flex items-center justify-center">
               <TimerProgress
-                stage={generatorStage}
+                stage={generatingFigure?.stage ?? GENERATOR_CONFIG.tetrominoRotationCount}
+                isFull={isGeneratorFull}
                 isDragging={dragState === 'dragging'}
                 paused={isBattlePaused}
                 onAdvanceStage={handleAdvanceStage}
               />
-            </div>
-
-            <div className="absolute inset-y-0 left-1/2 w-1/2 flex items-center justify-start pl-8">
-              <div
-                ref={generatorRef}
-                className="shrink-0 bg-neutral-800 rounded-xl border-2 border-neutral-700 shadow-inner flex items-center justify-center relative"
-                style={{ width: GENERATOR_CONFIG.slotWidthPx, height: GENERATOR_CONFIG.slotHeightPx }}
-              >
-                <span className="text-neutral-600 font-bold opacity-30 text-xs tracking-[0.24em] pointer-events-none">
-                  GENERATOR
-                </span>
-              </div>
             </div>
           </div>
         </div>

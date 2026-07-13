@@ -158,6 +158,20 @@ export function fillRandomEmptyCell(board: CellData[][], build: PlayerBuildState
   return fillCell(board, targetCell, build);
 }
 
+export function fillRandomEmptyCells(board: CellData[][], build: PlayerBuildState, count: number): CellData[][] {
+  let nextBoard = board;
+
+  for (let index = 0; index < count; index += 1) {
+    const targetCell = pickRandomEmptyCell(nextBoard);
+    if (!targetCell) {
+      break;
+    }
+    nextBoard = fillCell(nextBoard, targetCell, build);
+  }
+
+  return nextBoard;
+}
+
 export function pickRandomEmptyCell(board: CellData[][]): BoardCellPosition | null {
   const emptyCells: BoardCellPosition[] = [];
 
