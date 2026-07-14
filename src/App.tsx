@@ -164,14 +164,14 @@ function TimerProgress({
 
   if (stage === GENERATOR_CONFIG.stageCount) {
     return (
-      <div className="w-12 h-12 flex items-center justify-center rounded-full border border-yellow-500/25 bg-yellow-400/10 text-yellow-400 font-black text-[11px] leading-none">
+      <div className="w-8 h-8 flex items-center justify-center rounded-full border border-yellow-500/25 bg-yellow-400/10 text-yellow-400 font-black text-[8px] leading-none">
         MAX
       </div>
     );
   }
 
   return (
-    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+    <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
       <path
         className="text-neutral-700"
         strokeWidth="4"
@@ -855,6 +855,10 @@ export default function App() {
   const getActivatedBooster = (r: number, c: number) =>
     activatedBoosters.find((booster) => booster.position.r === r && booster.position.c === c);
 
+  const generatorAreaWidth = cellSize
+    ? cellSize * GENERATOR_CONFIG.idleScale * 4
+    : GENERATOR_CONFIG.slotWidthPx;
+
   const renderPiece = () => {
     if (generatorStage === 0 || !shape || !cellSize || !generatorRect) {
       return null;
@@ -1066,7 +1070,8 @@ export default function App() {
 
           <div className="w-full max-w-[360px] mt-2 h-[96px] relative">
             <div
-              className="absolute inset-y-0 left-0 w-1/2 flex items-center justify-end pr-8"
+              className="absolute inset-y-0 flex items-center"
+              style={{ right: `calc(50% + ${generatorAreaWidth / 2}px)` }}
             >
               <TimerProgress
                 stage={generatorStage}
@@ -1076,16 +1081,12 @@ export default function App() {
               />
             </div>
 
-            <div className="absolute inset-y-0 left-1/2 w-1/2 flex items-center justify-start pl-8">
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 flex items-center">
               <div
                 ref={generatorRef}
-                className="shrink-0 bg-neutral-800 rounded-xl border-2 border-neutral-700 shadow-inner flex items-center justify-center relative"
-                style={{ width: GENERATOR_CONFIG.slotWidthPx, height: GENERATOR_CONFIG.slotHeightPx }}
-              >
-                <span className="text-neutral-600 font-bold opacity-30 text-xs tracking-[0.24em] pointer-events-none">
-                  GENERATOR
-                </span>
-              </div>
+                className="shrink-0 relative"
+                style={{ width: generatorAreaWidth, height: GENERATOR_CONFIG.slotHeightPx }}
+              />
             </div>
           </div>
         </div>
