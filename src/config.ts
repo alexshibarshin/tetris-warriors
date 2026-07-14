@@ -124,7 +124,7 @@ export const GAME_CONFIG = {
 
     unitClassChance: 0.5,
     neutralEnemySharesByPhase: [0.54, 0.46, 0.38, 0.3, 0.24, 0.18, 0.14],
-    challengePrimaryColorShare: 0.72,
+    challengePrimaryColorShare: 0.6,
   },
   progression: {
     maxTier: 4,
