@@ -1,6 +1,6 @@
 export type BoosterType = 'cross' | 'bomb' | 'chroma';
 export type CellType = 'warrior' | 'coin' | 'booster';
-export type CellState = 'empty' | 'ready';
+export type CellState = 'blocked' | 'empty' | 'ready';
 
 export type CellData = {
   type?: CellType;

@@ -27,7 +27,7 @@ export function getCoinSpawnChance(board: CellData[][]): number {
 
   board.forEach((row) => {
     row.forEach((cell) => {
-      if (cell.state === 'empty') {
+      if (cell.state !== 'ready') {
         return;
       }
 
@@ -88,6 +88,10 @@ export function createEmptyCell(): CellData {
   return { state: 'empty' };
 }
 
+function createBlockedCell(): CellData {
+  return { state: 'blocked' };
+}
+
 function createCoinCell(): CellData {
   return { type: 'coin', state: 'ready' };
 }
@@ -102,12 +106,69 @@ export function createRandomBoosterCell(): CellData {
   };
 }
 
-export function createInitialBoard(build: PlayerBuildState): CellData[][] {
-  let board = Array.from({ length: BOARD_CONFIG.rows }, () =>
-    Array.from({ length: BOARD_CONFIG.cols }, createEmptyCell),
-  );
+type BoardLayout = {
+  activeCells: Array<{ r: number; c: number }>;
+};
 
-  const totalCells = BOARD_CONFIG.rows * BOARD_CONFIG.cols;
+function cellsInRow(r: number, columns: number[]) {
+  return columns.map((c) => ({ r, c }));
+}
+
+const RANDOMIZED_LAYOUTS: BoardLayout[] = [
+  { activeCells: [
+    ...cellsInRow(0, [1, 2, 3, 4]), ...cellsInRow(1, [1, 2, 3, 4, 5]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5, 6]), ...cellsInRow(3, [1, 2, 3, 4, 5]),
+    ...cellsInRow(4, [1, 2, 3, 4]),
+  ] },
+  { activeCells: [
+    ...cellsInRow(0, [1, 2, 3, 4, 5]), ...cellsInRow(1, [1, 2, 3, 4]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5]), ...cellsInRow(3, [1, 2, 3, 4]),
+    ...cellsInRow(4, [1, 2, 3, 4, 5]),
+  ] },
+  { activeCells: [
+    ...cellsInRow(0, [0, 1, 2]), ...cellsInRow(1, [0, 1, 2, 3, 4]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5, 6]), ...cellsInRow(3, [1, 2, 3, 4, 5]),
+    ...cellsInRow(4, [1, 2, 3, 4]),
+  ] },
+  { activeCells: [
+    ...cellsInRow(0, [4, 5, 6]), ...cellsInRow(1, [2, 3, 4, 5, 6]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5, 6]), ...cellsInRow(3, [1, 2, 3, 4, 5]),
+    ...cellsInRow(4, [2, 3, 4, 5]),
+  ] },
+  { activeCells: [
+    ...cellsInRow(0, [0, 1, 2, 3]), ...cellsInRow(1, [0, 1, 2, 3, 4]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5, 6]), ...cellsInRow(3, [1, 2, 3, 4, 5]),
+    ...cellsInRow(4, [3, 4, 5]),
+  ] },
+  { activeCells: [
+    ...cellsInRow(0, [3, 4, 5, 6]), ...cellsInRow(1, [2, 3, 4, 5, 6]),
+    ...cellsInRow(2, [0, 1, 2, 3, 4, 5, 6]), ...cellsInRow(3, [1, 2, 3, 4, 5]),
+    ...cellsInRow(4, [1, 2, 3]),
+  ] },
+];
+
+function createRandomizedBoard(): CellData[][] {
+  if (Math.random() < 0.25) {
+    return Array.from({ length: BOARD_CONFIG.rows }, () =>
+      Array.from({ length: BOARD_CONFIG.cols }, createEmptyCell),
+    );
+  }
+
+  const layout = RANDOMIZED_LAYOUTS[Math.floor(Math.random() * RANDOMIZED_LAYOUTS.length)];
+  const activeKeys = new Set(layout.activeCells.map(({ r, c }) => `${r}:${c}`));
+  return Array.from({ length: 5 }, (_, r) =>
+    Array.from({ length: 7 }, (_, c) => activeKeys.has(`${r}:${c}`) ? createEmptyCell() : createBlockedCell()),
+  );
+}
+
+export function createInitialBoard(build: PlayerBuildState, options?: { randomizedTopology?: boolean }): CellData[][] {
+  let board = options?.randomizedTopology
+    ? createRandomizedBoard()
+    : Array.from({ length: BOARD_CONFIG.rows }, () =>
+      Array.from({ length: BOARD_CONFIG.cols }, createEmptyCell),
+    );
+
+  const totalCells = board.reduce((total, row) => total + row.filter((cell) => cell.state === 'empty').length, 0);
   const cellsToFill = Math.min(BOARD_CONFIG.initialFilledCells, totalCells);
   const initialCoins = Math.min(BOARD_CONFIG.initialCoins, cellsToFill);
 
@@ -273,13 +334,14 @@ export function fillRandomEmptyCellsWithBoosters(board: CellData[][], count: num
 }
 
 export function evaluatePlacementPreview(params: {
+  board: CellData[][];
   dragState: DragState;
   shape: ShapeDef | null;
   boardRect: DOMRect | null;
   cellSize: number;
   pointerPos: PointerPosition;
 }): PlacementPreview {
-  const { dragState, shape, boardRect, cellSize, pointerPos } = params;
+  const { board, dragState, shape, boardRect, cellSize, pointerPos } = params;
   const emptyPreview: PlacementPreview = {
     isOverBoard: false,
     isValidPlacement: false,
@@ -317,7 +379,7 @@ export function evaluatePlacementPreview(params: {
     const r = snappedR + block.y;
     coveredCells.push({ r, c });
 
-    if (c < 0 || c >= BOARD_CONFIG.cols || r < 0 || r >= BOARD_CONFIG.rows) {
+    if (c < 0 || c >= (board[0]?.length ?? 0) || r < 0 || r >= board.length || board[r]?.[c]?.state === 'blocked') {
       isValidPlacement = false;
     }
   }
@@ -381,8 +443,8 @@ export function applyShapeToBoard(board: CellData[][], coveredCells: BoardCellPo
       });
 
       if (cell.boosterType === 'cross') {
-        for (let column = 0; column < BOARD_CONFIG.cols; column += 1) queueCell(r, column);
-        for (let row = 0; row < BOARD_CONFIG.rows; row += 1) queueCell(row, c);
+        for (let column = 0; column < (board[0]?.length ?? 0); column += 1) queueCell(r, column);
+        for (let row = 0; row < board.length; row += 1) queueCell(row, c);
       }
 
       if (cell.boosterType === 'bomb') {

@@ -113,7 +113,10 @@ export const GAME_CONFIG = {
     idleTargetPaddingPx: 20,
     idleStopDistancePx: 5,
 
-    projectileHitRadiusPx: 15,
+    // Units are rendered at roughly 48 px wide.  This leaves a forgiving, but
+    // still visible, collision margin around their bodies.
+    projectileHitRadiusPx: 22,
+    projectileMaxLeadTimeSec: 1.1,
     damageTextYOffsetPx: 10,
     damageTextRiseSpeedPxPerSec: 20,
     damageTextLifeSec: 1,

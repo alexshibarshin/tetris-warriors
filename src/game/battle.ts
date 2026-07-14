@@ -227,9 +227,41 @@ function playerDamage(state: BattleState, attacker: Entity, target: Entity | nul
   return damage * suddenDeathDamageMultiplier(state);
 }
 
+function projectileAimPoint(attacker: Entity, target: Entity) {
+  const relativeX = target.x - attacker.x;
+  const relativeY = target.y - attacker.y;
+  const projectileSpeed = BATTLE_CONFIG.projectileSpeed;
+  const targetSpeedSq = target.vx * target.vx + target.vy * target.vy;
+  const a = targetSpeedSq - projectileSpeed * projectileSpeed;
+  const b = 2 * (relativeX * target.vx + relativeY * target.vy);
+  const c = relativeX * relativeX + relativeY * relativeY;
+  let travelTime = Math.sqrt(c) / projectileSpeed;
+
+  // Solve the interception equation once at launch. The resulting projectile
+  // keeps its velocity, so this improves accuracy without homing behavior.
+  if (Math.abs(a) < 0.0001) {
+    if (Math.abs(b) > 0.0001) {
+      const solution = -c / b;
+      if (solution > 0) travelTime = solution;
+    }
+  } else {
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant >= 0) {
+      const first = (-b - Math.sqrt(discriminant)) / (2 * a);
+      const second = (-b + Math.sqrt(discriminant)) / (2 * a);
+      const solution = [first, second].filter((time) => time > 0).sort((left, right) => left - right)[0];
+      if (solution !== undefined) travelTime = solution;
+    }
+  }
+
+  travelTime = Math.min(travelTime, BATTLE_CONFIG.projectileMaxLeadTimeSec);
+  return { x: target.x + target.vx * travelTime, y: target.y + target.vy * travelTime };
+}
+
 function pushProjectile(state: BattleState, attacker: Entity, target: Entity, damage: number, frostHit = false, xOffset = 0) {
-  const dx = target.x - attacker.x;
-  const dy = target.y - attacker.y;
+  const aimPoint = projectileAimPoint(attacker, target);
+  const dx = aimPoint.x - (attacker.x + xOffset);
+  const dy = aimPoint.y - attacker.y;
   const length = Math.hypot(dx, dy) || 1;
   state.projectiles.push({
     id: id(), x: attacker.x + xOffset, y: attacker.y, vx: dx / length * BATTLE_CONFIG.projectileSpeed,
@@ -238,6 +270,15 @@ function pushProjectile(state: BattleState, attacker: Entity, target: Entity, da
     colorIdx: attacker.colorIdx, faction: attacker.faction, attackerId: attacker.id,
     warriorId: attacker.warriorId, frostHit,
   });
+}
+
+function segmentDistanceToPoint(startX: number, startY: number, endX: number, endY: number, pointX: number, pointY: number) {
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq === 0) return Math.hypot(pointX - startX, pointY - startY);
+  const progress = Math.max(0, Math.min(1, ((pointX - startX) * dx + (pointY - startY) * dy) / lengthSq));
+  return Math.hypot(pointX - (startX + dx * progress), pointY - (startY + dy * progress));
 }
 
 function selectPlayerTarget(state: BattleState, attacker: Entity) {
@@ -583,7 +624,11 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
     if (entity.hp <= 0) continue;
     entity.attackTimer -= dt * 1000;
     entity.attackVisualTimer = Math.max(0, entity.attackVisualTimer - dt * 1000);
-    if (entity.frozenTimer > 0 || entity.stunnedTimer > 0) continue;
+    if (entity.frozenTimer > 0 || entity.stunnedTimer > 0) {
+      entity.vx = 0;
+      entity.vy = 0;
+      continue;
+    }
 
     const target = entity.faction === 'player' ? selectPlayerTarget(state, entity) : selectEnemyTarget(state, entity);
     entity.targetId = target?.id ?? null;
@@ -652,6 +697,8 @@ function stepEntities(state: BattleState, dt: number, viewport: BattleViewport) 
     }
     entity.x = Math.max(10, Math.min(viewport.width - 10, entity.x + vx * dt));
     entity.y += vy * dt;
+    entity.vx = vx;
+    entity.vy = vy;
   }
 
   if (state.enemyStructureHp > 0) {
@@ -671,6 +718,8 @@ function stepProjectiles(state: BattleState, dt: number, viewport: BattleViewpor
   const structure = { ...structurePosition(viewport), y: BATTLE_CONFIG.enemyStructureYPx + 8 };
   for (let index = state.projectiles.length - 1; index >= 0; index -= 1) {
     const projectile = state.projectiles[index];
+    const previousX = projectile.x;
+    const previousY = projectile.y;
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
     if (projectile.targetKind === 'enemyStructure' && state.enemyStructureHp > 0) {
@@ -682,7 +731,7 @@ function stepProjectiles(state: BattleState, dt: number, viewport: BattleViewpor
       continue;
     }
     const target = state.entities.find((entity) => entity.id === projectile.targetId);
-    if (target && target.hp > 0 && distance(projectile, target) < BATTLE_CONFIG.projectileHitRadiusPx) {
+    if (target && target.hp > 0 && segmentDistanceToPoint(previousX, previousY, projectile.x, projectile.y, target.x, target.y) <= BATTLE_CONFIG.projectileHitRadiusPx) {
       const attacker = projectile.attackerId ? state.entities.find((entity) => entity.id === projectile.attackerId) ?? null : null;
       applyDamage(state, target, projectile.damage, attacker);
       if (projectile.frostHit && attacker && target.hp > 0) applyFrostHit(state, attacker, target);

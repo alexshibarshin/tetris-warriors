@@ -244,8 +244,9 @@ function ColorDots({ colors }: { colors: number[] }) {
   ))}</div>;
 }
 
-function StagePreview({ theme, onFight, onReroll, onDeck }: {
+function StagePreview({ theme, onFight, onReroll, onDeck, randomizedBoard, onRandomizedBoardChange }: {
   theme: StageTheme; onFight: () => void; onReroll: () => void; onDeck: () => void;
+  randomizedBoard: boolean; onRandomizedBoardChange: (enabled: boolean) => void;
 }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-[200] overflow-y-auto bg-[radial-gradient(circle_at_top,#34120f_0%,#09090b_48%,#000_100%)] p-4 text-white touch-pan-y">
@@ -282,6 +283,14 @@ function StagePreview({ theme, onFight, onReroll, onDeck }: {
           <div className="text-[10px] font-black tracking-[.2em] text-sky-200/55">СОВЕТ</div>
           <div className="mt-1 text-sm font-bold leading-snug text-sky-50">{theme.recommendation}</div>
         </div>
+
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-[22px] border border-white/10 bg-white/[.06] px-4 py-3">
+          <div>
+            <div className="text-sm font-black">РАНДОМИЗИРОВАННАЯ ДОСКА</div>
+            <div className="mt-1 text-xs leading-snug text-white/55">Экспериментальные формы для большего разнообразия.</div>
+          </div>
+          <input type="checkbox" checked={randomizedBoard} onChange={(event) => onRandomizedBoardChange(event.target.checked)} className="h-5 w-5 shrink-0 accent-amber-400" />
+        </label>
 
         <div className="mt-auto grid grid-cols-2 gap-2 pt-2">
           <button onClick={onReroll} className="rounded-2xl border border-white/15 bg-white/8 py-3 text-sm font-black active:scale-95">↻ ПЕРЕБРОС</button>
@@ -499,6 +508,9 @@ export default function App() {
   );
   const [generatorStage, setGeneratorStage] = useState(1);
   const [board, setBoard] = useState<CellData[][]>(() => DEFAULT_GAME_DESIGN.board.createInitialBoard(createInitialPlayerBuild()));
+  const [randomizedBoard, setRandomizedBoard] = useState(false);
+  const boardRows = board.length;
+  const boardCols = board[0]?.length ?? BOARD_CONFIG.cols;
   const [dragState, setDragState] = useState<DragState>('idle');
   const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
   const [activatedCells, setActivatedCells] = useState<BoardCellPosition[]>([]);
@@ -553,7 +565,7 @@ export default function App() {
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, []);
+  }, [boardCols, boardRows]);
 
   useEffect(() => () => {
     if (matchFeedbackTimerRef.current) clearTimeout(matchFeedbackTimerRef.current);
@@ -632,6 +644,7 @@ export default function App() {
     const nextTheme = createStageTheme();
     setPlayerBuild(nextBuild);
     setStageTheme(nextTheme);
+    setRandomizedBoard(false);
     setCoins(0);
     setBoard(DEFAULT_GAME_DESIGN.board.createInitialBoard(nextBuild));
     setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
@@ -655,9 +668,10 @@ export default function App() {
     battleAreaRef.current?.reset(nextTheme);
   };
 
-  const cellSize = boardRect ? boardRect.width / BOARD_CONFIG.cols : 0;
+  const cellSize = boardRect ? boardRect.width / boardCols : 0;
   const shape = generatorStage > 0 ? generatorSequence[generatorStage - 1] : null;
   const placement = evaluatePlacementPreview({
+    board,
     dragState,
     shape,
     boardRect,
@@ -683,7 +697,7 @@ export default function App() {
         setPendingUpgradeDrafts((currentDrafts) => currentDrafts + activationResult.earnedCoins);
 
         if (activationResult.spawnedWarriors.length > 0) {
-          battleAreaRef.current?.spawnWarriors(activationResult.spawnedWarriors, BOARD_CONFIG.cols, playerBuild);
+          battleAreaRef.current?.spawnWarriors(activationResult.spawnedWarriors, boardCols, playerBuild);
         }
       }
 
@@ -717,6 +731,9 @@ export default function App() {
   const rerollStage = () => {
     const nextTheme = createStageTheme();
     setStageTheme(nextTheme);
+    setBoard(DEFAULT_GAME_DESIGN.board.createInitialBoard(playerBuild, { randomizedTopology: randomizedBoard }));
+    setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
+    setGeneratorStage(1);
     battleAreaRef.current?.reset(nextTheme);
   };
 
@@ -965,7 +982,7 @@ export default function App() {
         <div className="p-4 flex flex-col gap-4 bg-neutral-900 flex-none pb-8 items-center w-full">
           <div
             ref={boardRef}
-            className="relative flex flex-wrap w-full bg-neutral-800 border-t border-l border-neutral-950 rounded-md shadow-inner box-content"
+            className="relative flex flex-wrap w-full rounded-md shadow-inner box-content"
             style={{ maxWidth: BOARD_CONFIG.maxWidthPx }}
           >
             {board.map((row, r) =>
@@ -974,6 +991,7 @@ export default function App() {
                 const isActivated = isCellActivated(r, c);
                 const activatedBooster = getActivatedBooster(r, c);
                 const checker = (r + c) % 2 === 0 ? 'bg-neutral-800' : 'bg-neutral-700';
+                const isBlocked = cell.state === 'blocked';
 
                 return (
                   <div
@@ -982,11 +1000,11 @@ export default function App() {
                     aria-label={cell.state === 'ready' ? `${getBoardObjectName(cell)} — показать описание` : undefined}
                     onClick={() => inspectBoardCell(cell)}
                     style={{
-                      width: `${100 / BOARD_CONFIG.cols}%`,
+                      width: `${100 / boardCols}%`,
                       height: cellSize || 'auto',
                       aspectRatio: '1/1',
                     }}
-                    className={`relative border-r border-b border-neutral-950 ${checker} ${cell.state === 'ready' ? 'cursor-pointer active:brightness-125' : ''}`}
+                    className={`relative ${isBlocked ? 'bg-transparent' : `border border-neutral-950 ${checker}`} ${cell.state === 'ready' ? 'cursor-pointer active:brightness-125' : ''}`}
                   >
                     {cell.state === 'ready' && cell.type === 'warrior' && (
                       <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-0.5">
@@ -1218,7 +1236,19 @@ export default function App() {
             <BoardObjectTooltip cell={inspectedCell} build={playerBuild} onClose={() => setInspectedCell(null)} />
           )}
           {showStagePreview && !showDeckScreen && gameStatus === 'playing' && (
-            <StagePreview theme={stageTheme} onFight={startBattle} onReroll={rerollStage} onDeck={() => setShowDeckScreen(true)} />
+            <StagePreview
+              theme={stageTheme}
+              onFight={startBattle}
+              onReroll={rerollStage}
+              onDeck={() => setShowDeckScreen(true)}
+              randomizedBoard={randomizedBoard}
+              onRandomizedBoardChange={(enabled) => {
+                setRandomizedBoard(enabled);
+                setBoard(DEFAULT_GAME_DESIGN.board.createInitialBoard(playerBuild, { randomizedTopology: enabled }));
+                setGeneratorSequence(DEFAULT_GAME_DESIGN.generator.generateShapeSequence());
+                setGeneratorStage(1);
+              }}
+            />
           )}
           {showDeckScreen && gameStatus === 'playing' && (
             <DeckScreen build={playerBuild} onBack={() => setShowDeckScreen(false)} />
